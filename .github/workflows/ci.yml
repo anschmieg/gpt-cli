@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: "latest"
+
+      - name: Cache deps
+        run: deno cache --unstable ./src/providers/openai.ts
+
+      - name: Run unit tests (no network)
+        run: |
+          deno test \
+            tests/cli_test.ts \
+            tests/config_test.ts \
+            tests/provider_unit_test.ts \
+            --allow-read
+
+  integration:
+    name: Integration tests (mock server)
+    runs-on: ubuntu-latest
+    needs: unit
+    # Run integration only on push to avoid heavy permissions on PRs
+    if: github.event_name == 'push'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: "latest"
+
+      - name: Run integration test (spawns mock server)
+        env:
+          GPT_CLI_TEST: "1"
+        run: |
+          deno test tests/provider_test.ts --allow-run --allow-net=127.0.0.1:8086 --allow-env --allow-read
