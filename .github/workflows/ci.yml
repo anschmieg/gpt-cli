@@ -49,4 +49,4 @@ jobs:
         env:
           GPT_CLI_TEST: "1"
         run: |
-          deno test tests/provider_test.ts --allow-run --allow-net=127.0.0.1:8086 --allow-env --allow-read
+          deno test tests/integration/provider_integration_test.ts --allow-run --allow-net=127.0.0.1:8086 --allow-env --allow-read

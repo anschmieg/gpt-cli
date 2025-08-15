@@ -1,4 +1,4 @@
-import { chatCompletion } from "../src/providers/openai.ts";
+import { chatCompletion } from "../../src/providers/openai.ts";
 
 // helper: run a promise with a timeout and ensure timer is cleared to avoid leaks
 async function withTimeout<T>(p: Promise<T>, ms: number) {
