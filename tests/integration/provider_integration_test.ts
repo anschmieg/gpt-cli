@@ -52,7 +52,9 @@ async function startMockServer() {
     // didn't start in time
     try {
       child.kill();
-    } catch {}
+    } catch {
+      // ignore
+    }
   } catch {
     // Deno runner not available or failed; fall through to other runners below
   }
