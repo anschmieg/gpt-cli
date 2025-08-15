@@ -27,7 +27,8 @@ export async function chatCompletion(
     ? { baseUrl: baseUrlOrOptions }
     : baseUrlOrOptions || {};
   const baseUrl = opts.baseUrl ?? "http://127.0.0.1:8086";
-  const fetcher: Fetcher = opts.fetcher ?? ((input, init) => fetch(input, init));
+  const fetcher: Fetcher = opts.fetcher ??
+    ((input, init) => fetch(input, init));
   // Safeguard: when running tests, enforce that only the mock (localhost) is used.
   try {
     const testFlag = Deno.env.get("GPT_CLI_TEST");

@@ -1,0 +1,62 @@
+{
+  "scriptId": "332",
+  "url": "file:///Users/adrian/Projects/gpt-cli/tests/core_test.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 0, "endOffset": 1250, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        { "startOffset": 109, "endOffset": 663, "count": 1 },
+        { "startOffset": 619, "endOffset": 661, "count": 0 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "fakeProvider",
+      "ranges": [{ "startOffset": 144, "endOffset": 198, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "fakeLog",
+      "ranges": [{ "startOffset": 236, "endOffset": 279, "count": 2 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "console.log",
+      "ranges": [{ "startOffset": 360, "endOffset": 418, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 481, "endOffset": 495, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        { "startOffset": 729, "endOffset": 1247, "count": 1 },
+        { "startOffset": 1208, "endOffset": 1245, "count": 0 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "fakeProvider",
+      "ranges": [{ "startOffset": 764, "endOffset": 817, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "fakeLog",
+      "ranges": [{ "startOffset": 855, "endOffset": 898, "count": 2 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "console.log",
+      "ranges": [{ "startOffset": 954, "endOffset": 1012, "count": 1 }],
+      "isBlockCoverage": true
+    }
+  ]
+}

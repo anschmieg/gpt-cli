@@ -56,8 +56,9 @@ async function startMockServer() {
       // ignore
     }
   } catch {
-  // Deno runner not available or failed; don't fallback to other runtimes.
-  throw new Error("Deno runner not available or mock server failed to start");
+    // Deno runner not available or failed; don't fallback to other runtimes.
+    throw new Error("Deno runner not available or mock server failed to start");
+  }
 }
 
 // removed stream-reading readiness logic; using HTTP polling instead

@@ -1,0 +1,25 @@
+{
+  "scriptId": "333",
+  "url": "file:///Users/adrian/Projects/gpt-cli/src/cli.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 0, "endOffset": 1250, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "parseArgs",
+      "ranges": [{ "startOffset": 237, "endOffset": 968, "count": 0 }],
+      "isBlockCoverage": false
+    },
+    {
+      "functionName": "runCli",
+      "ranges": [
+        { "startOffset": 976, "endOffset": 1249, "count": 5 },
+        { "startOffset": 1139, "endOffset": 1211, "count": 4 },
+        { "startOffset": 1211, "endOffset": 1248, "count": 1 }
+      ],
+      "isBlockCoverage": true
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "scriptId": "334",
+  "url": "file:///Users/adrian/Projects/gpt-cli/utils/markdown.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 0, "endOffset": 120, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "renderMarkdown",
+      "ranges": [{ "startOffset": 7, "endOffset": 119, "count": 1 }],
+      "isBlockCoverage": true
+    }
+  ]
+}

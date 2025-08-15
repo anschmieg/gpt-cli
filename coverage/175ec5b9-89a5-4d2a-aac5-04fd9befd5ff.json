@@ -1,0 +1,28 @@
+{
+  "scriptId": "332",
+  "url": "file:///Users/adrian/Projects/gpt-cli/tests/cli_test.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 0, "endOffset": 473, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        { "startOffset": 77, "endOffset": 291, "count": 1 },
+        { "startOffset": 150, "endOffset": 189, "count": 0 },
+        { "startOffset": 234, "endOffset": 289, "count": 0 }
+      ],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "",
+      "ranges": [
+        { "startOffset": 326, "endOffset": 470, "count": 1 },
+        { "startOffset": 431, "endOffset": 468, "count": 0 }
+      ],
+      "isBlockCoverage": true
+    }
+  ]
+}

@@ -3,5 +3,6 @@
   "version": "0.1.0",
   "description": "A Deno CLI app",
   "entry": "main.ts",
-  "tasks": {}
+  "tasks": {},
+  "exports": {}
 }

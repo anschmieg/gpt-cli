@@ -1,4 +1,16 @@
-export async function callProvider(config: any): Promise<{ text?: string, markdown?: string }> {
+export type ProviderConfig = {
+  model?: string;
+  system?: string;
+  prompt?: string;
+  temperature?: number;
+};
+
+export type Fetcher = (input: string, init?: RequestInit) => Promise<Response>;
+
+export async function callProvider(
+  config: ProviderConfig,
+  fetcher?: Fetcher,
+): Promise<{ text?: string; markdown?: string }> {
   const apiKey = Deno.env.get("OPENAI_API_KEY");
   if (!apiKey) throw new Error("OPENAI_API_KEY not set in environment");
   const url = "https://api.openai.com/v1/chat/completions";
@@ -11,7 +23,8 @@ export async function callProvider(config: any): Promise<{ text?: string, markdo
     temperature: config.temperature || 1.0,
     max_tokens: 2048,
   };
-  const res = await fetch(url, {
+  const realFetch = fetcher ?? ((input, init) => fetch(input, init));
+  const res = await realFetch(url, {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${apiKey}`,

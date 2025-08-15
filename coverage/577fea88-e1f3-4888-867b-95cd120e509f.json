@@ -1,0 +1,19 @@
+{
+  "scriptId": "333",
+  "url": "file:///Users/adrian/Projects/gpt-cli/utils/log.ts",
+  "functions": [
+    {
+      "functionName": "",
+      "ranges": [{ "startOffset": 0, "endOffset": 123, "count": 1 }],
+      "isBlockCoverage": true
+    },
+    {
+      "functionName": "log",
+      "ranges": [
+        { "startOffset": 7, "endOffset": 122, "count": 2 },
+        { "startOffset": 78, "endOffset": 120, "count": 1 }
+      ],
+      "isBlockCoverage": true
+    }
+  ]
+}
