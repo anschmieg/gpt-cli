@@ -1,0 +1,15 @@
+{
+  "devDependencies": {
+    "@types/bun": "latest",
+    "body-parser": "^2.2.0",
+    "express": "^5.1.0",
+    "openai-api-mock": "^0.2.0"
+  },
+  "name": "mock-openai",
+  "module": "index.ts",
+  "type": "module",
+  "private": true,
+  "peerDependencies": {
+    "typescript": "^5"
+  }
+}

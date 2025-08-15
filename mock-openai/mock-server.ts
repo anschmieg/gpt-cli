@@ -1,0 +1,120 @@
+#!/usr/bin/env -S deno run --allow-net
+
+const port = 8086;
+
+const customResponseText = `
+__Advertisement :)__
+
+- __[pica](https://nodeca.github.io/pica/demo/)__ - high quality and fast image
+  resize in browser.
+
+You will like those projects!
+
+---
+
+# h1 Heading 8-)
+## h2 Heading
+### h3 Heading
+#### h4 Heading
+##### h5 Heading
+###### h6 Heading
+
+## Horizontal Rules
+
+___
+
+---
+
+***
+
+## Typographic replacements
+
+Enable typographer option to see result.
+
+(c) (C) (r) (R) (tm) (TM) (p) (P) +- 
+
+test.. test... test..... test?..... test!....
+
+!!!!!! ???? ,,  -- ---
+
+"Smartypants, double quotes" and 'single quotes'
+`;
+
+function buildResponseTemplate() {
+  return {
+    choices: [
+      {
+        message: { content: customResponseText, role: "assistant" },
+        finish_reason: "stop",
+        index: 0,
+        logprobs: null,
+      },
+    ],
+    id: "chatcmpl-mock",
+    model: "gpt-3.5-mock",
+    object: "chat.completion",
+    usage: { completion_tokens: 10, prompt_tokens: 9, total_tokens: 19 },
+    created: Math.floor(Date.now() / 1000),
+  };
+}
+
+async function handler(req: Request): Promise<Response> {
+  const url = new URL(req.url);
+
+  if (url.pathname === "/health" && req.method === "GET") {
+    return new Response(JSON.stringify({ status: "ok" }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  if (url.pathname === "/v1/chat/completions" && req.method === "POST") {
+    const body = await req.json().catch(() => ({}));
+    const responseTemplate = buildResponseTemplate();
+
+    // If client asked for streaming, return SSE
+    if (body && body.stream) {
+      const content = responseTemplate.choices?.[0]?.message?.content || "";
+      const words = content.split(/\s+/).filter(Boolean);
+      const batchSize = 8;
+      const latencyMs = 3; // very small delay for CI speed
+
+      const stream = new ReadableStream({
+        async start(controller) {
+          for (let i = 0; i < words.length; i += batchSize) {
+            const chunk = words.slice(i, i + batchSize).join(" ") +
+              (i + batchSize < words.length ? " " : "");
+            const payload = JSON.stringify({
+              choices: [{ delta: { content: chunk } }],
+            });
+            controller.enqueue(
+              new TextEncoder().encode(`data: ${payload}\n\n`),
+            );
+            // small delay
+            await new Promise((r) => setTimeout(r, latencyMs));
+          }
+          controller.enqueue(new TextEncoder().encode("data: [DONE]\n\n"));
+          controller.close();
+        },
+      });
+
+      return new Response(stream, {
+        status: 200,
+        headers: { "Content-Type": "text/event-stream" },
+      });
+    }
+
+    // Non-streaming: return JSON immediately
+    return new Response(JSON.stringify(responseTemplate), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  return new Response("Not Found", { status: 404 });
+}
+
+console.log(`Mock OpenAI API server listening at http://127.0.0.1:${port}`);
+// Use the built-in Deno.serve to avoid deprecated std APIs.
+// Deno.serve will block the process and handle incoming requests.
+Deno.serve({ hostname: "127.0.0.1", port }, handler);
