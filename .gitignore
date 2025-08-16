@@ -18,6 +18,7 @@ yarn.lock
 dist/
 build/
 out/
+gpt-cli
 
 # Environment files
 .env

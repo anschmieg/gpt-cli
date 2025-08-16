@@ -1,9 +1,26 @@
-export function log(...args: unknown[]) {
+/**
+ * Permission-safe logging helpers. Reads `GPT_CLI_VERBOSE` if available.
+ */
+function verboseEnabled(): boolean {
   try {
-    if (Deno.env.get("GPT_CLI_VERBOSE") === "1") {
-      console.log("[DEBUG]", ...args);
-    }
+    return Deno.env.get("GPT_CLI_VERBOSE") === "1";
   } catch {
-    // ignore when env access is not permitted in tests
+    return false;
   }
+}
+
+export function debug(...args: unknown[]) {
+  if (verboseEnabled()) console.log("[DEBUG]", ...args);
+}
+
+export function info(...args: unknown[]) {
+  console.log("[INFO]", ...args);
+}
+
+export function warn(...args: unknown[]) {
+  console.warn("[WARN]", ...args);
+}
+
+export function error(...args: unknown[]) {
+  console.error("[ERROR]", ...args);
 }

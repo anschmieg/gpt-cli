@@ -1,4 +1,4 @@
-import { log } from "./src/utils/log.ts";
+import { debug } from "./src/utils/log.ts";
 import { renderMarkdown } from "./src/utils/markdown.ts";
 import { DEFAULTS, MOCK_SERVER_URL } from "./src/config.ts";
 
@@ -60,7 +60,7 @@ export async function runCore(
       });
     });
   const render = renderMd ?? renderMarkdown;
-  const logFn = logger ?? log;
+  const logFn = logger ?? debug;
 
   if (cfg.verbose) logFn("Config:", cfg);
 
