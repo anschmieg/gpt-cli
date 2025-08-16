@@ -10,8 +10,14 @@ function printHelp() {
 export function parseArgs(argv: string[]) {
   return parse(argv, {
     string: ["provider", "model", "system", "file"],
-    boolean: ["verbose", "help"],
-    default: { provider: "openai", temperature: 1.0, verbose: false },
+    boolean: ["verbose", "help", "markdown"],
+    default: {
+      provider: "copilot",
+      model: "gpt-4.1-mini",
+      temperature: "0.6",
+      verbose: false,
+      markdown: true,
+    },
     alias: { h: "help" },
   });
 }
@@ -31,6 +37,7 @@ if (import.meta.main) {
     system: args.system,
     file: args.file,
     verbose: args.verbose,
+    useMarkdown: Boolean(args.markdown),
     prompt: args._.join(" "),
   };
 

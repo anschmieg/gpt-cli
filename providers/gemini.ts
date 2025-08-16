@@ -7,17 +7,14 @@ export type ProviderConfig = {
   prompt?: string;
   temperature?: number;
 };
-
 export type Fetcher = (input: string, init?: RequestInit) => Promise<Response>;
 
-export async function callProvider(
-  config: ProviderConfig,
-  fetcher?: Fetcher,
-): Promise<{ text?: string; markdown?: string }> {
-  const apiKey = Deno.env.get("OPENAI_API_KEY");
-  if (!apiKey) throw new Error("OPENAI_API_KEY not set in environment");
-  const base = Deno.env.get("OPENAI_API_BASE") ?? "https://api.openai.com";
-  const url = `${base}/v1/chat/completions`;
+export async function callProvider(config: ProviderConfig, fetcher?: Fetcher) {
+  const apiKey = Deno.env.get("GEMINI_API_KEY");
+  if (!apiKey) throw new Error("GEMINI_API_KEY not set in environment");
+  // Hard-coded OpenAI-compatible Gemini endpoint
+  const base = "https://generativelanguage.googleapis.com/v1beta/openai";
+  const url = `${base}`;
 
   const body: ChatRequest = {
     model: config.model,

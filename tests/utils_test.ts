@@ -7,7 +7,12 @@ Deno.test("renderMarkdown returns input unchanged", () => {
   if (out !== input) throw new Error("markdown renderer changed input");
 });
 
-Deno.test("log prints only when verbose env is set", () => {
+Deno.test("log prints only when verbose env is set", async () => {
+  const perm = await Deno.permissions.query({ name: "env" });
+  if (perm.state !== "granted") {
+    console.log("skipping utils env tests: requires --allow-env");
+    return;
+  }
   const orig = console.log;
   const captured: string[] = [];
   console.log = (...args: unknown[]) => {

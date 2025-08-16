@@ -63,9 +63,54 @@ async function startMockServer() {
       // ignore
     }
   } catch {
-    // Deno runner not available or failed; don't fallback to other runtimes.
-    throw new Error("Deno runner not available or mock server failed to start");
+    // Deno runner not available or failed; fall through to other runners below
   }
+
+  // Fall back: try node/bun runners in the mock-openai folder.
+  const runners = [
+    { cmd: "bun", args: ["run", "index.ts"] },
+    { cmd: "node", args: ["./mock-server.js"] },
+  ];
+
+  for (const r of runners) {
+    try {
+      const command = new Deno.Command(r.cmd, {
+        args: r.args,
+        cwd: "./mock-openai",
+        stdout: "null",
+        stderr: "null",
+      });
+      const child = command.spawn();
+
+      // Poll /health until ready
+      const deadline = Date.now() + 10_000;
+      while (Date.now() < deadline) {
+        try {
+          const res = await fetch("http://127.0.0.1:8086/health");
+          try {
+            await res.text();
+          } catch {
+            // ignore
+          }
+          if (res.ok) return child;
+        } catch {
+          // ignore
+        }
+        await new Promise((r) => setTimeout(r, 100));
+      }
+
+      try {
+        child.kill();
+        await child.status;
+      } catch {
+        // ignore
+      }
+    } catch {
+      // runner not available; try next
+    }
+  }
+
+  throw new Error("mock server failed to start with any runner");
 }
 
 // removed stream-reading readiness logic; using HTTP polling instead
@@ -96,14 +141,12 @@ Deno.test("provider chatCompletion hits mock-openai and returns markdown (with s
     }
   } finally {
     try {
-      if (server) {
-        server.kill();
-        // Wait for the process to actually exit
-        try {
-          await server.status;
-        } catch {
-          // ignore
-        }
+      if (server) server.kill();
+      // Wait for the process to actually exit
+      try {
+        await server.status;
+      } catch {
+        // ignore
       }
     } catch {
       // ignore

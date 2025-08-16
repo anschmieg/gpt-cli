@@ -7,16 +7,13 @@ export type ProviderConfig = {
   prompt?: string;
   temperature?: number;
 };
-
 export type Fetcher = (input: string, init?: RequestInit) => Promise<Response>;
 
-export async function callProvider(
-  config: ProviderConfig,
-  fetcher?: Fetcher,
-): Promise<{ text?: string; markdown?: string }> {
-  const apiKey = Deno.env.get("OPENAI_API_KEY");
-  if (!apiKey) throw new Error("OPENAI_API_KEY not set in environment");
-  const base = Deno.env.get("OPENAI_API_BASE") ?? "https://api.openai.com";
+export async function callProvider(config: ProviderConfig, fetcher?: Fetcher) {
+  const apiKey = Deno.env.get("COPILOT_API_KEY");
+  if (!apiKey) throw new Error("COPILOT_API_KEY not set in environment");
+  const base = Deno.env.get("COPILOT_API_BASE");
+  if (!base) throw new Error("COPILOT_API_BASE not set in environment");
   const url = `${base}/v1/chat/completions`;
 
   const body: ChatRequest = {

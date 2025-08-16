@@ -1,4 +1,6 @@
 #!/usr/bin/env -S deno run --allow-net
+/// <reference lib="deno.ns" />
+/// <reference lib="dom" />
 
 const port = 8086;
 
@@ -69,11 +71,17 @@ async function handler(req: Request): Promise<Response> {
   }
 
   if (url.pathname === "/v1/chat/completions" && req.method === "POST") {
-    const body = await req.json().catch(() => ({}));
+    // parse body as unknown and narrow to a plain object map; avoid `any`
+    const rawBody: unknown = await req.json().catch(() => ({}));
+    const body: Record<string, unknown> = (
+        typeof rawBody === "object" && rawBody !== null
+      )
+      ? (rawBody as Record<string, unknown>)
+      : {};
     const responseTemplate = buildResponseTemplate();
 
     // If client asked for streaming, return SSE
-    if (body && body.stream) {
+    if ("stream" in body && Boolean(body["stream"])) {
       const content = responseTemplate.choices?.[0]?.message?.content || "";
       const words = content.split(/\s+/).filter(Boolean);
       const batchSize = 8;
