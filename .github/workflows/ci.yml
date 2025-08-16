@@ -31,12 +31,11 @@ jobs:
       - name: Run unit tests (no network)
         run: |
           deno test \
-            tests/cli_test.ts \
-            tests/cli_args_test.ts \
-            tests/cli_args_edge_test.ts \
-            tests/cli_parse_test.ts \
+            tests/cli \
+            tests/providers \
             tests/config_test.ts \
-            tests/provider_unit_test.ts \
+            tests/core_test.ts \
+            tests/utils_test.ts \
             --allow-read
 
   integration:
@@ -58,7 +57,7 @@ jobs:
         env:
           GPT_CLI_TEST: "1"
         run: |
-          deno test tests/integration/provider_integration_test.ts --allow-run --allow-net=127.0.0.1:8086 --allow-env --allow-read
+          deno test tests/integration --allow-run --allow-net=127.0.0.1:8086 --allow-env --allow-read
 
   coverage:
     name: Coverage (lcov)
@@ -78,7 +77,7 @@ jobs:
         env:
           GPT_CLI_TEST: "1"
         run: |
-          deno test --coverage=coverage --allow-run --allow-net=127.0.0.1:8086 --allow-env --allow-read
+          deno test --coverage=coverage tests/cli tests/providers tests/config_test.ts tests/core_test.ts tests/utils_test.ts tests/integration --allow-run --allow-net=127.0.0.1:8086 --allow-env --allow-read
 
       - name: Generate lcov
         run: deno coverage --lcov coverage > coverage.lcov
