@@ -72,3 +72,26 @@ export async function chatCompletion(
   }
   return content;
 }
+
+// Streaming wrapper: yields string fragments from the provider
+export async function chatCompletionStream(
+  req: ChatRequest,
+  baseUrlOrOptions: string | ChatOptions = { baseUrl: "http://127.0.0.1:8086" },
+): Promise<AsyncGenerator<string, void, unknown>> {
+  const opts: ChatOptions = typeof baseUrlOrOptions === "string"
+    ? { baseUrl: baseUrlOrOptions }
+    : baseUrlOrOptions || {};
+  const baseUrl = opts.baseUrl ?? "http://127.0.0.1:8086";
+  const fetcher: Fetcher = opts.fetcher ??
+    ((input, init) => fetch(input, init));
+
+  // dynamic import of the shared streaming helper to avoid duplication
+  const mod = await import("../../providers/api_openai_compatible.ts");
+  const gen = mod.chatCompletionRequestStream({
+    url: `${baseUrl}/v1/chat/completions`,
+    apiKey: "",
+    body: req,
+    fetcher,
+  });
+  return gen;
+}

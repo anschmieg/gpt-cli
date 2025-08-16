@@ -122,7 +122,78 @@ async function handler(req: Request): Promise<Response> {
   return new Response("Not Found", { status: 404 });
 }
 
-console.log(`Mock OpenAI API server listening at http://127.0.0.1:${port}`);
-// Use the built-in Deno.serve to avoid deprecated std APIs.
-// Deno.serve will block the process and handle incoming requests.
-Deno.serve({ hostname: "127.0.0.1", port }, handler);
+export async function startMockServerProcess(): Promise<{ close: () => void }> {
+  // Spawn a subprocess running this file so tests can control lifecycle.
+  const cmd = [
+    Deno.execPath(),
+    "run",
+    "--allow-net=127.0.0.1:8086",
+    import.meta.url,
+  ];
+  const command = new Deno.Command(Deno.execPath(), {
+    args: ["run", "--allow-net=127.0.0.1:8086", import.meta.url],
+    stdout: "piped",
+    stderr: "piped",
+  });
+  const proc = command.spawn();
+
+  // Wait until the server is healthy or timeout
+  const start = Date.now();
+  while (Date.now() - start < 2000) {
+    try {
+      const res = await fetch("http://127.0.0.1:8086/health");
+      try {
+        await res.text();
+      } catch {
+        // ignore
+      }
+      if (res.ok) break;
+    } catch (_e) {
+      // server not up yet
+    }
+    await new Promise((r) => setTimeout(r, 10));
+  }
+
+  return {
+    close: async () => {
+      try {
+        proc.kill();
+      } catch (_e) {
+        // ignore kill errors
+      }
+      try {
+        // Wait for process to exit
+        await proc.status;
+      } catch (_e) {
+        // ignore
+      }
+
+      // Cancel/close stdout/stderr readers if present to avoid leaks
+      try {
+        if (proc.stdout) {
+          const r = proc.stdout.getReader();
+          await r.cancel();
+        }
+      } catch (_e) {
+        // ignore
+      }
+      try {
+        if (proc.stderr) {
+          const r = proc.stderr.getReader();
+          await r.cancel();
+        }
+      } catch (_e) {
+        // ignore
+      }
+    },
+  };
+}
+
+console.log(`Mock OpenAI API server module loaded at http://127.0.0.1:${port}`);
+// If executed directly, start the server in-process.
+if (import.meta.main) {
+  console.log(`Mock OpenAI API server listening at http://127.0.0.1:${port}`);
+  // Use the built-in Deno.serve to avoid deprecated std APIs.
+  // Deno.serve will block the process and handle incoming requests.
+  Deno.serve({ hostname: "127.0.0.1", port }, handler);
+}

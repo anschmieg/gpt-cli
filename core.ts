@@ -10,6 +10,7 @@ export interface CoreConfig {
   verbose?: boolean;
   prompt?: string;
   useMarkdown?: boolean;
+  stream?: boolean;
 }
 
 export type CallProviderFn = (
@@ -48,6 +49,44 @@ export async function runCore(
   const logFn = logger ?? log;
 
   if (cfg.verbose) logFn("Config:", cfg);
+
+  // If streaming was requested, try to consume a provider streaming API first.
+  if (cfg.stream) {
+    try {
+      const providerName = (cfg.provider ?? "openai").toLowerCase();
+      const m = await import(`./providers/${providerName}.ts`);
+      try {
+        // eslint-disable-next-line no-console
+        console.log("runCore: provider module keys:", Object.keys(m));
+      } catch {
+        // ignore
+      }
+      if (m && typeof m.chatCompletionStream === "function") {
+        // Call provider streaming API and print chunks as they arrive.
+        const baseUrl = Deno.env.get("GPT_CLI_TEST") === "1"
+          ? "http://127.0.0.1:8086"
+          : undefined;
+        const gen: AsyncGenerator<string, void, unknown> = await m
+          .chatCompletionStream({
+            model: cfg.model,
+            messages: [{ role: "user", content: cfg.prompt ?? "" }],
+            stream: true,
+          }, { baseUrl });
+        for await (const chunk of gen) {
+          // For now, print raw chunks. downstream: pass through render for markdown.
+          Deno.stdout.write(new TextEncoder().encode(chunk));
+        }
+        // finish with newline
+        console.log("");
+        return;
+      }
+    } catch (err) {
+      // If streaming isn't supported or fails, fall back to non-streaming provider below.
+      if (cfg.verbose) logFn("Streaming provider error, falling back:", err);
+    }
+  }
+
+  // Non-streaming path: call provider to get full response.
   let response;
   try {
     response = await callProvider(cfg);
