@@ -1,27 +1,23 @@
 import type { ChatRequest, Fetcher } from "./types.ts";
-import { ensureResponseOk } from "./adapter_utils.ts";
+import { requestNonStreaming, requestStreaming } from "./openai_request.ts";
 
 export interface ChatOptions {
   baseUrl?: string;
   fetcher?: Fetcher;
 }
 
-/**
- * chatCompletion: call provider to get assistant content.
- * Backwards-compatible: second argument may be a string baseUrl or an options object.
- */
-export async function chatCompletion(
+// Backwards-compatible wrapper: keeps test-mode guard and a stable API while
+// delegating request logic to `openai_request.ts`.
+export function chatCompletion(
   req: ChatRequest,
   baseUrlOrOptions: string | ChatOptions = { baseUrl: "http://127.0.0.1:8086" },
 ): Promise<string> {
-  const opts: ChatOptions = typeof baseUrlOrOptions === "string"
-    ? { baseUrl: baseUrlOrOptions }
-    : baseUrlOrOptions || {};
-  const baseUrl = opts.baseUrl ?? "http://127.0.0.1:8086";
-  const fetcher: Fetcher = opts.fetcher ??
-    ((input, init) => fetch(input, init));
-  // Safeguard: when running tests, enforce that only the mock (localhost) is used.
+  // Test-mode guard: enforce local endpoints when GPT_CLI_TEST=1
   try {
+    const opts = typeof baseUrlOrOptions === "string"
+      ? { baseUrl: baseUrlOrOptions }
+      : baseUrlOrOptions || {};
+    const baseUrl = opts.baseUrl ?? "http://127.0.0.1:8086";
     const testFlag = Deno.env.get("GPT_CLI_TEST");
     if (testFlag === "1") {
       const urlIsLocal = baseUrl.startsWith("http://127.0.0.1") ||
@@ -32,54 +28,16 @@ export async function chatCompletion(
         );
       }
     }
-  } catch (_err) {
-    // If env access is not permitted, be conservative: don't block execution here.
-    // Tests should run with --allow-env so this path is rarely used.
+  } catch {
+    // ignore env access errors
   }
 
-  const url = `${baseUrl}/v1/chat/completions`;
-  const body = {
-    model: req.model || "gpt-3.5-mock",
-    messages: req.messages,
-    stream: req.stream || false,
-  };
-
-  const res = await fetcher(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-
-  await ensureResponseOk(res);
-
-  const data = await res.json();
-  // Expect the mock server to return OpenAI-style response with choices[0].message.content
-  const content = data?.choices?.[0]?.message?.content;
-  if (typeof content !== "string") {
-    throw new Error("invalid response shape from provider");
-  }
-  return content;
+  return requestNonStreaming(req, baseUrlOrOptions as ChatOptions);
 }
 
-// Streaming wrapper: yields string fragments from the provider
-export async function chatCompletionStream(
+export function chatCompletionStream(
   req: ChatRequest,
   baseUrlOrOptions: string | ChatOptions = { baseUrl: "http://127.0.0.1:8086" },
 ): Promise<AsyncGenerator<string, void, unknown>> {
-  const opts: ChatOptions = typeof baseUrlOrOptions === "string"
-    ? { baseUrl: baseUrlOrOptions }
-    : baseUrlOrOptions || {};
-  const baseUrl = opts.baseUrl ?? "http://127.0.0.1:8086";
-  const fetcher: Fetcher = opts.fetcher ??
-    ((input, init) => fetch(input, init));
-
-  // dynamic import of the shared streaming helper to avoid duplication
-  const mod = await import("./api_openai_compatible.ts");
-  const gen = mod.chatCompletionRequestStream({
-    url: `${baseUrl}/v1/chat/completions`,
-    apiKey: "",
-    body: req,
-    fetcher,
-  });
-  return gen;
+  return requestStreaming(req, baseUrlOrOptions as ChatOptions);
 }

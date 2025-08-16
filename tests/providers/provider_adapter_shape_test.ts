@@ -4,7 +4,7 @@ const adapters = ["openai", "copilot", "gemini"] as const;
 
 for (const name of adapters) {
   Deno.test(`adapter shape: ${name}`, async () => {
-    const m = await import(`../../providers/${name}.ts`);
+    const m = await import(`../../adapters/${name}.ts`);
     expect(m).toBeTruthy();
     expect(typeof m.callProvider).toBe("function");
     if (m.chatCompletionStream !== undefined) {

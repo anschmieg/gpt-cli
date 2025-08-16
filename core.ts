@@ -1,5 +1,5 @@
-import { log } from "./utils/log.ts";
-import { renderMarkdown } from "./utils/markdown.ts";
+import { log } from "./src/utils/log.ts";
+import { renderMarkdown } from "./src/utils/markdown.ts";
 import { DEFAULTS } from "./src/config.ts";
 
 export interface CoreConfig {
@@ -20,7 +20,7 @@ import {
   normalizeProviderError,
   ProviderError,
   validateAdapterModule,
-} from "./src/providers/adapter_utils.ts";
+} from "./src/utils/adapter_utils.ts";
 
 export type CallProviderFn = (
   config: CoreConfig,
@@ -54,7 +54,7 @@ export async function runCore(
       const providerName = (c.provider ?? "openai").toLowerCase();
       // Dynamic import of the provider adapter. The adapter must export
       // `callProvider(config, opts?)`.
-      return import(`./providers/${providerName}.ts`).then((m) => {
+      return import(`./adapters/${providerName}.ts`).then((m) => {
         validateAdapterModule(m, providerName);
         return m.callProvider(c, opts);
       });
@@ -68,7 +68,7 @@ export async function runCore(
   if (cfg.stream) {
     try {
       const providerName = (cfg.provider ?? "openai").toLowerCase();
-      const m = await import(`./providers/${providerName}.ts`);
+      const m = await import(`./adapters/${providerName}.ts`);
       try {
         // eslint-disable-next-line no-console
         console.log("runCore: provider module keys:", Object.keys(m));
@@ -79,7 +79,7 @@ export async function runCore(
         // Runtime shape check: ensure basic non-stream call exists too.
         if (typeof m.callProvider !== "function") {
           throw new Error(
-            `Provider adapter ./providers/${providerName}.ts must export a 'callProvider(config, opts?)' function`,
+            `Provider adapter ./adapters/${providerName}.ts must export a 'callProvider(config, opts?)' function`,
           );
         }
         // Call provider streaming API and print chunks as they arrive.

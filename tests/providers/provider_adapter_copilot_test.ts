@@ -1,5 +1,5 @@
 import { expect } from "jsr:@std/expect";
-import { callProvider as copilot } from "../../providers/copilot.ts";
+import { callProvider as copilot } from "../../adapters/copilot.ts";
 import type { Fetcher, ProviderOptions } from "../../src/providers/types.ts";
 
 Deno.test("copilot adapter errors when ProviderOptions missing", async () => {

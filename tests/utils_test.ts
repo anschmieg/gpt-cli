@@ -1,5 +1,5 @@
-import { log } from "../utils/log.ts";
-import { renderMarkdown } from "../utils/markdown.ts";
+import { log } from "../src/utils/log.ts";
+import { renderMarkdown } from "../src/utils/markdown.ts";
 
 Deno.test("renderMarkdown returns input unchanged", () => {
   const input = "# hi";

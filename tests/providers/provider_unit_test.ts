@@ -1,6 +1,6 @@
-import { chatCompletionRequest } from "../../src/providers/api_openai_compatible.ts";
+import { chatCompletionRequest } from "../../src/providers/openai_request.ts";
 import { expect } from "jsr:@std/expect";
-import { normalizeProviderError } from "../../src/providers/adapter_utils.ts";
+import { normalizeProviderError } from "../../src/utils/adapter_utils.ts";
 
 Deno.test("chatCompletion returns mocked content without network", async () => {
   const fetcher = (_url: string, _init?: RequestInit) =>

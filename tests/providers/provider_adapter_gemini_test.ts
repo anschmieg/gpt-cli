@@ -1,5 +1,5 @@
 import { expect } from "jsr:@std/expect";
-import { callProvider as gemini } from "../../providers/gemini.ts";
+import { callProvider as gemini } from "../../adapters/gemini.ts";
 import type { Fetcher, ProviderOptions } from "../../src/providers/types.ts";
 
 Deno.test("gemini adapter errors when ProviderOptions missing", async () => {

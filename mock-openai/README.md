@@ -1,4 +1,4 @@
-# mock-openai
+# mock-server-openai
 
 To install dependencies:
 

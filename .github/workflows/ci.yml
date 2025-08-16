@@ -99,11 +99,12 @@ jobs:
         with:
           deno-version: "latest"
 
-      - name: Run tests with coverage
+      - name: Run tests with coverage (exclude integration)
         env:
           GPT_CLI_TEST: "1"
-        run: |
-          deno test --coverage=coverage tests/cli tests/providers tests/config_test.ts tests/core_test.ts tests/utils_test.ts tests/integration --allow-run --allow-net=127.0.0.1:8086 --allow-env --allow-read
+        run: | # Collect all test .ts files except those under tests/integration
+          files=( $(grep -RIl --include='*.ts' '.' tests | grep -v '^tests/integration/' ) )
+          deno test --coverage=coverage "${files[@]}" --allow-run --allow-net=127.0.0.1:8086 --allow-env --allow-read --allow-write
 
       - name: Generate lcov
         run: |

@@ -1,5 +1,5 @@
 import { expect } from "jsr:@std/expect";
-import { callProvider as openai } from "../../providers/openai.ts";
+import { callProvider as openai } from "../../adapters/openai.ts";
 import type { Fetcher, ProviderOptions } from "../../src/providers/types.ts";
 
 Deno.test("openai adapter errors when ProviderOptions missing", async () => {

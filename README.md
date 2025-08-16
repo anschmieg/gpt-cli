@@ -18,7 +18,7 @@ suites used by CI.
 - `./src/cli.ts` contains a small, testable `parseArgs` helper and a `runCli`
   shim used by unit tests. `runCli` currently returns a greeting and echoes
   provided arguments (keeps tests fast and deterministic).
-- A Deno-based mock OpenAI-compatible server lives under `mock-openai/` and is
+- A Deno-based mock OpenAI-compatible server lives under `tests/mock-server-openai/` and is
   used by the integration tests to avoid network calls to external APIs.
 
 ## Defaults
@@ -111,7 +111,7 @@ deno coverage --lcov coverage > coverage.lcov
 
 ## Mock server
 
-The mock server is implemented in `mock-openai/` and is intentionally local and
+The mock server is implemented in `tests/mock-server-openai/` and is intentionally local and
 lightweight so integration tests can run offline and deterministically.
 
 ## Notes for contributors

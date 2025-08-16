@@ -1,5 +1,5 @@
 import { expect } from "jsr:@std/expect";
-import { chatCompletionRequestStream } from "../../src/providers/api_openai_compatible.ts";
+import { chatCompletionRequestStream } from "../../src/providers/openai_request.ts";
 
 // Helper: create a Response-like object with a ReadableStream body that emits SSE-style chunks
 function makeFakeResponse(chunks: string[]) {

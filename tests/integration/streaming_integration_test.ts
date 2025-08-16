@@ -4,7 +4,7 @@ import { assertStringIncludes } from "https://deno.land/std@0.203.0/testing/asse
 // that returns SSE chunks. This avoids needing --allow-run or --allow-net.
 Deno.test("end-to-end streaming from mock server (in-memory)", async () => {
   // Import the openai provider adapter and call its streaming API directly.
-  const prov = await import("../../providers/openai.ts");
+  const prov = await import("../../adapters/openai.ts");
 
   // Simulate the same content as the mock server (contains 'Advertisement')
   const content =

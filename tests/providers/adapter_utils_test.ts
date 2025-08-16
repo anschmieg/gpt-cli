@@ -1,5 +1,5 @@
 import { expect } from "jsr:@std/expect";
-import { normalizeProviderError } from "../../src/providers/adapter_utils.ts";
+import { normalizeProviderError } from "../../src/utils/adapter_utils.ts";
 
 Deno.test("normalizeProviderError handles string", () => {
   const n = normalizeProviderError("oh no");

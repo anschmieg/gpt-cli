@@ -4,7 +4,8 @@ This project groups tests into logical subfolders so you can run focused groups
 easily:
 
 - `tests/cli/` - CLI unit tests (parsing, small helpers)
-- `tests/providers/` - provider adapters and unit tests for the HTTP client
+- `tests/providers/` - adapter tests and unit tests for the HTTP client (runtime
+  adapters live in `adapters/`)
 - `tests/integration/` - integration tests that spawn the mock server (require
   `--allow-run` and network to localhost)
 

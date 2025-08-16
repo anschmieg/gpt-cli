@@ -1,10 +1,10 @@
-import type { ProviderAdapter } from "./types.ts";
+import type { ProviderAdapter } from "../providers/types.ts";
 
 export function validateAdapterModule(m: unknown, providerName = "<unknown>") {
   const mod = m as Partial<ProviderAdapter> | undefined;
   if (!mod || typeof mod.callProvider !== "function") {
     throw new Error(
-      `Provider adapter ./providers/${providerName}.ts must export a 'callProvider(config, opts?)' function`,
+      `Provider adapter ./adapters/${providerName}.ts must export a 'callProvider(config, opts?)' function`,
     );
   }
   if (
@@ -12,7 +12,7 @@ export function validateAdapterModule(m: unknown, providerName = "<unknown>") {
     typeof mod.chatCompletionStream !== "function"
   ) {
     throw new Error(
-      `Provider adapter ./providers/${providerName}.ts exported 'chatCompletionStream' but it is not a function`,
+      `Provider adapter ./adapters/${providerName}.ts exported 'chatCompletionStream' but it is not a function`,
     );
   }
   return true;

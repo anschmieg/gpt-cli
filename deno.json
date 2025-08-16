@@ -3,6 +3,11 @@
   "version": "0.1.0",
   "description": "A Deno CLI app",
   "entry": "main.ts",
-  "tasks": {},
+  "tasks": {
+    "test:unit": "deno test tests/cli tests/providers tests/config_test.ts tests/core_test.ts tests/utils_test.ts --allow-read --allow-env",
+    "test:integration": "deno test tests/integration --allow-run --allow-net=127.0.0.1:8086 --allow-env --allow-read",
+    "test:all": "deno test --allow-read --allow-env --allow-run --allow-net=127.0.0.1:8086",
+    "test:coverage": "bash -lc \"find tests -name '*.ts' | grep -v '^tests/integration/' | xargs -r deno test --coverage=coverage --allow-run --allow-net=127.0.0.1:8086 --allow-env --allow-read --allow-write && deno coverage --lcov coverage > coverage/lcov.info\""
+  },
   "exports": {}
 }

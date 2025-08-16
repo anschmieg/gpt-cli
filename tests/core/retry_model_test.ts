@@ -1,5 +1,5 @@
 import { type CallProviderFn, runCore } from "../../core.ts";
-import { ProviderError } from "../../src/providers/adapter_utils.ts";
+import { ProviderError } from "../../src/utils/adapter_utils.ts";
 import type { CoreConfig } from "../../core.ts";
 
 Deno.test("runCore retries once when model_not_supported and flag enabled", async () => {

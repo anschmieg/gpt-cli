@@ -10,8 +10,9 @@ action items are tracked with checkboxes for quick reference and status.
       `runCore`.
 - [x] Core orchestration (`core.ts`) — builds provider call, handles responses,
       prints output; returns structured results (CLI handles exit).
-- [x] Providers (`providers/*.ts`) — adapter modules for OpenAI-compatible APIs.
-- [x] Mock server (`mock-openai/mock-server.ts`) — local mock OpenAI-compatible
+- [x] Adapters (`adapters/*.ts`) — runtime adapter entrypoints for
+      OpenAI-compatible APIs.
+- [x] Mock server (`tests/mock-server-openai/mock-server.ts`) — local mock OpenAI-compatible
       server for integration tests.
 - [~] Utils (`utils/*.ts`) — logging, markdown rendering, helpers. _(Partial;
   logging is now permission-safe.)_

@@ -154,15 +154,66 @@ export async function startMockServerProcess(): Promise<{ close: () => void }> {
       }
 
       return {
-        close: () => {
+        close: async () => {
           try {
             proc.kill();
           } catch (_e) {
             // ignore kill errors
           }
+
+          // Close or cancel stdout/stderr if available to avoid leaks reported by
+          // the Deno test runner. Different Deno versions expose slightly
+          // different stream APIs, so try both cancel() and close() where
+          // present.
+          try {
+            type StreamLike = {
+              cancel?: () => Promise<void> | void;
+              close?: () => void;
+            };
+
+            if (proc.stdout) {
+              try {
+                const s = proc.stdout as unknown as StreamLike;
+                if (typeof s.cancel === "function") {
+                  await s.cancel();
+                }
+              } catch {
+                // ignore
+              }
+              try {
+                const s = proc.stdout as unknown as StreamLike;
+                if (typeof s.close === "function") {
+                  s.close();
+                }
+              } catch {
+                // ignore
+              }
+            }
+            if (proc.stderr) {
+              try {
+                const s = proc.stderr as unknown as StreamLike;
+                if (typeof s.cancel === "function") {
+                  await s.cancel();
+                }
+              } catch {
+                // ignore
+              }
+              try {
+                const s = proc.stderr as unknown as StreamLike;
+                if (typeof s.close === "function") {
+                  s.close();
+                }
+              } catch {
+                // ignore
+              }
+            }
+          } catch {
+            // ignore any close/cancel errors
+          }
+
           try {
             // Wait for process to exit
-            return proc.status.catch(() => {});
+            return await proc.status.catch(() => {});
           } catch (_e) {
             // ignore
             return Promise.resolve();
