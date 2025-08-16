@@ -123,70 +123,103 @@ async function handler(req: Request): Promise<Response> {
 }
 
 export async function startMockServerProcess(): Promise<{ close: () => void }> {
-  // Spawn a subprocess running this file so tests can control lifecycle.
-  const cmd = [
-    Deno.execPath(),
-    "run",
-    "--allow-net=127.0.0.1:8086",
-    import.meta.url,
-  ];
-  const command = new Deno.Command(Deno.execPath(), {
-    args: ["run", "--allow-net=127.0.0.1:8086", import.meta.url],
-    stdout: "piped",
-    stderr: "piped",
-  });
-  const proc = command.spawn();
+  // Prefer spawning a subprocess when run permission is granted. Otherwise,
+  // if the test runner granted network permission, start the server
+  // in-process using Deno.serve and return a handle to stop it.
+  try {
+    const runPerm = await Deno.permissions.query({ name: "run" });
+    if (runPerm.state === "granted") {
+      const command = new Deno.Command(Deno.execPath(), {
+        args: ["run", "--allow-net=127.0.0.1:8086", import.meta.url],
+        stdout: "piped",
+        stderr: "piped",
+      });
+      const proc = command.spawn();
 
-  // Wait until the server is healthy or timeout
-  const start = Date.now();
-  while (Date.now() - start < 2000) {
-    try {
-      const res = await fetch("http://127.0.0.1:8086/health");
-      try {
-        await res.text();
-      } catch {
-        // ignore
+      // Wait until the server is healthy or timeout
+      const start = Date.now();
+      while (Date.now() - start < 2000) {
+        try {
+          const res = await fetch("http://127.0.0.1:8086/health");
+          try {
+            await res.text();
+          } catch {
+            // ignore
+          }
+          if (res.ok) break;
+        } catch (_e) {
+          // server not up yet
+        }
+        await new Promise((r) => setTimeout(r, 10));
       }
-      if (res.ok) break;
-    } catch (_e) {
-      // server not up yet
+
+      return {
+        close: () => {
+          try {
+            proc.kill();
+          } catch (_e) {
+            // ignore kill errors
+          }
+          try {
+            // Wait for process to exit
+            return proc.status.catch(() => {});
+          } catch (_e) {
+            // ignore
+            return Promise.resolve();
+          }
+        },
+      };
     }
-    await new Promise((r) => setTimeout(r, 10));
+  } catch {
+    // ignore permission query failures and fall through to net-based attempt
   }
 
-  return {
-    close: async () => {
-      try {
-        proc.kill();
-      } catch (_e) {
-        // ignore kill errors
-      }
-      try {
-        // Wait for process to exit
-        await proc.status;
-      } catch (_e) {
-        // ignore
+  // If run isn't granted, try to start the server in-process when network
+  // permission is available. This avoids requiring --allow-run for tests that
+  // are allowed to bind to localhost.
+  try {
+    const netPerm = await Deno.permissions.query({
+      name: "net",
+      host: "127.0.0.1:8086",
+    });
+    if (netPerm.state === "granted") {
+      const controller = new AbortController();
+      // Start server in background; stop by aborting the controller
+      Deno.serve(
+        { hostname: "127.0.0.1", port, signal: controller.signal },
+        handler,
+      );
+
+      // Wait for quick health check readiness
+      const start = Date.now();
+      while (Date.now() - start < 2000) {
+        try {
+          const res = await fetch("http://127.0.0.1:8086/health");
+          if (res.ok) break;
+        } catch {
+          // not up yet
+        }
+        await new Promise((r) => setTimeout(r, 10));
       }
 
-      // Cancel/close stdout/stderr readers if present to avoid leaks
-      try {
-        if (proc.stdout) {
-          const r = proc.stdout.getReader();
-          await r.cancel();
-        }
-      } catch (_e) {
-        // ignore
-      }
-      try {
-        if (proc.stderr) {
-          const r = proc.stderr.getReader();
-          await r.cancel();
-        }
-      } catch (_e) {
-        // ignore
-      }
-    },
-  };
+      return {
+        close: () => {
+          try {
+            controller.abort();
+          } catch {
+            // ignore
+          }
+          return Promise.resolve();
+        },
+      };
+    }
+  } catch {
+    // ignore permission query failures
+  }
+
+  throw new Error(
+    "startMockServerProcess requires --allow-run or --allow-net=127.0.0.1:8086 to start the mock server",
+  );
 }
 
 console.log(`Mock OpenAI API server module loaded at http://127.0.0.1:${port}`);

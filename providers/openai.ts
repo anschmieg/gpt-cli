@@ -1,23 +1,25 @@
 import { chatCompletionRequest } from "./api_openai_compatible.ts";
-import type { ChatRequest } from "./api_openai_compatible.ts";
-
-export type ProviderConfig = {
-  model?: string;
-  system?: string;
-  prompt?: string;
-  temperature?: number;
-};
-
-export type Fetcher = (input: string, init?: RequestInit) => Promise<Response>;
+import { throwNormalized } from "../src/providers/adapter_utils.ts";
+import type {
+  ChatRequest,
+  Fetcher,
+  ProviderConfig,
+  ProviderOptions,
+} from "../src/providers/types.ts";
 
 export async function callProvider(
   config: ProviderConfig,
-  fetcher?: Fetcher,
+  opts?: ProviderOptions,
 ): Promise<{ text?: string; markdown?: string }> {
-  const apiKey = Deno.env.get("OPENAI_API_KEY");
-  if (!apiKey) throw new Error("OPENAI_API_KEY not set in environment");
-  const base = Deno.env.get("OPENAI_API_BASE") ?? "https://api.openai.com";
-  const url = `${base}/v1/chat/completions`;
+  const apiKey = opts?.apiKey ?? "";
+  if (!apiKey) {
+    throwNormalized(
+      new Error("OPENAI_API_KEY not provided in ProviderOptions"),
+    );
+  }
+  const base = opts?.baseUrl ?? Deno.env.get("OPENAI_API_BASE") ??
+    "https://api.openai.com";
+  const url = `${base.replace(/\/$/, "")}/v1/chat/completions`;
 
   const body: ChatRequest = {
     model: config.model,
@@ -28,7 +30,14 @@ export async function callProvider(
     stream: false,
   };
 
-  const text = await chatCompletionRequest({ url, apiKey, body, fetcher });
+  const usedFetcher: Fetcher = opts?.fetcher ??
+    ((input, init) => fetch(input, init));
+  const text = await chatCompletionRequest({
+    url,
+    apiKey,
+    body,
+    fetcher: usedFetcher,
+  });
   return { text };
 }
 
@@ -36,7 +45,11 @@ export async function callProvider(
 // that yields chunks from the provider.
 export async function chatCompletionStream(
   req: ChatRequest,
-  baseUrlOrOptions: string | { baseUrl?: string; fetcher?: Fetcher } = {
+  baseUrlOrOptions: string | {
+    baseUrl?: string;
+    fetcher?: Fetcher;
+    apiKey?: string;
+  } = {
     baseUrl: "http://127.0.0.1:8086",
   },
 ): Promise<AsyncGenerator<string, void, unknown>> {
@@ -60,9 +73,11 @@ export async function chatCompletionStream(
   } catch {
     // ignore logging errors in restricted tests
   }
+  const apiKey = opts.apiKey ?? "";
+
   const gen = mod.chatCompletionRequestStream({
-    url: `${baseUrl}/v1/chat/completions`,
-    apiKey: Deno.env.get("OPENAI_API_KEY") ?? "",
+    url: `${baseUrl.replace(/\/$/, "")}/v1/chat/completions`,
+    apiKey,
     body: req,
     fetcher,
   });

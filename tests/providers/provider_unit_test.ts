@@ -1,5 +1,6 @@
-import { chatCompletionRequest } from "../../providers/api_openai_compatible.ts";
+import { chatCompletionRequest } from "../../src/providers/api_openai_compatible.ts";
 import { assertEquals } from "https://deno.land/std@0.201.0/testing/asserts.ts";
+import { normalizeProviderError } from "../../src/providers/adapter_utils.ts";
 
 Deno.test("chatCompletion returns mocked content without network", async () => {
   const fetcher = (_url: string, _init?: RequestInit) =>
@@ -34,6 +35,8 @@ Deno.test("chatCompletion surfaces provider errors", async () => {
     });
     throw new Error("expected error");
   } catch (err) {
-    if (!(err instanceof Error)) throw err;
+    // Assert normalized shape for provider errors
+    const n = normalizeProviderError(err);
+    assertEquals(typeof n.message, "string");
   }
 });

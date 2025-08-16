@@ -22,7 +22,7 @@ suites used by CI.
 ## Defaults
 
 - provider: `copilot` (default when running the top-level `cli.ts`)
-- model: `gpt-4.1-mini` (default model)
+- model: `gpt-4o-mini` (default model)
 - temperature: `0.6` (default)
 - verbose: `false`
 - system: the default system prompt below (used if `--system` not provided)

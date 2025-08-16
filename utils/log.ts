@@ -1,5 +1,9 @@
 export function log(...args: unknown[]) {
-  if (Deno.env.get("GPT_CLI_VERBOSE") === "1") {
-    console.log("[DEBUG]", ...args);
+  try {
+    if (Deno.env.get("GPT_CLI_VERBOSE") === "1") {
+      console.log("[DEBUG]", ...args);
+    }
+  } catch {
+    // ignore when env access is not permitted in tests
   }
 }

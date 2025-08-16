@@ -1,58 +1,130 @@
-– und unterstützt konfigurierbare Parameter wie Modellwahl, Temperatur,
-# Implementation checklist
+# Implementation Checklist
 
-This file is a compact checklist covering project structure, goals, required features, current status, and small actionable tasks you can pick and run immediately.
+This file provides a clear and actionable checklist to guide development and maintenance, organized by project structure, goals, features, tests, and CI. All action items are tracked with checkboxes for quick reference and status.
 
-## Project overview
-- [x] CLI parsing (`cli.ts`) — parses flags, builds `CoreConfig` and calls `runCore`.
-- [x] Core orchestration (`core.ts`) — builds provider call, handles responses, prints output.
-- [x] Providers (`providers/*.ts`) — adapter modules for OpenAI-compatible APIs (openai, copilot, gemini).
-- [x] Mock server (`mock-openai/mock-server.ts`) — local mock OpenAI-compatible server used for integration tests.
-- [~] Utils (`utils/*.ts`) — logging, markdown rendering, small helpers. (partial)
+## Project Overview
 
-## Goals
-- [ ] Reliable non-streaming responses (text/markdown).
-- [ ] Streaming support (SSE / incremental parsing).
-- [ ] Robust markdown rendering (non-streaming and streaming).
-- [ ] Shell suggestion mode (safe suggestion output, no execution by default).
+- [x] CLI parsing (`cli.ts`) — parses flags, builds `CoreConfig`, calls `runCore`.
+- [x] Core orchestration (`core.ts`) — builds provider call, handles responses, prints output; returns structured results (CLI handles exit).
+- [x] Providers (`providers/*.ts`) — adapter modules for OpenAI-compatible APIs.
+- [x] Mock server (`mock-openai/mock-server.ts`) — local mock OpenAI-compatible server for integration tests.
+- [~] Utils (`utils/*.ts`) — logging, markdown rendering, helpers. *(Partial; logging is now permission-safe.)*
+
+## Project Goals
+
+- [x] Reliable non-streaming responses (text/markdown).
+- [~] Streaming support (SSE/incremental parsing). *(Basic functionality; improved rendering pending.)*
+- [ ] Robust markdown rendering (for streamed and non-streamed content).
+- [ ] Shell suggestion mode (safe output, no execution by default).
 - [x] CI coverage generation and artifacts.
 
-## Feature checklist & status
+## Feature Checklist & Status
 
-1) Streaming + non-streaming responses
+**Streaming & Non-streaming Responses**
 - [x] Mock server provides SSE for streaming.
-- [ ] Provider adapters expose streaming path (AsyncGenerator or callback).
-- [ ] Core supports streaming provider output and progressive printing.
-- Next small task: implement streaming read in `providers/api_openai_compatible.ts` and add a unit/integration test.
+- [x] Adapters expose streaming (AsyncGenerator or callback).
+- [x] Core supports streaming output and progressive printing.
+- [x] Streaming read in `src/providers/api_openai_compatible.ts` with tests (integration gated by Deno permissions).
 
-2) Markdown parsing (non-streaming)
-- [ ] Implement `renderMarkdown` in `utils/markdown.ts` to produce ANSI-decorated output for terminals.
-- Next small task: add simple renderer (headings, emphasis, lists, code fences) and tests.
-
-3) Markdown parsing for streaming responses
-- [ ] Implement streaming tokenizer/renderer that can handle token boundaries across chunks.
-- Next small task: implement buffered chunk renderer (buffer N KB, parse, render) as interim solution.
-
-4) Shell suggestion mode
+**Shell Suggestion Mode**
 - [ ] Add `--suggest` or `--mode=suggest` flag in `cli.ts` and wire through `core.ts`.
-- [ ] Implement a deterministic JSON response contract from provider prompts for suggestions.
-- Next small task: add CLI flag and parse-only path that returns parsed suggestion JSON (no execution).
+- [ ] Deterministic JSON contract from provider for suggestions.
+    - [ ] CLI flag and parse-only path, returning parsed JSON (no execution).
 
-5) Markdown visual rendering (streaming)
-- [ ] Integrate streaming renderer into CLI printing for progressive visual output.
-- Next small task: create a streaming test harness using the mock server and verify output parity with non-streamed renderer.
+**Markdown Parsing (Non-streaming)**
+- [ ] Implement `renderMarkdown` in `utils/markdown.ts` for ANSI-decorated terminal output.
+    - [ ] Renderer for headings, emphasis, lists, code fences.
+    - [ ] Add unit tests for renderer.
 
-## Tests to add
+**Markdown Parsing (Streaming)**
+- [ ] Streaming tokenizer/renderer that handles token boundaries across chunks.
+    - [ ] Buffered chunk renderer (buffer N KB, parse, render) as interim.
+  
+**Markdown Visual Rendering (Streaming)**
+- [ ] Integrate streaming renderer into CLI for progressive output.
+    - [ ] Create streaming test harness using mock server.
+    - [ ] Verify output parity with non-streamed renderer.
+
+## Tests
+
+- [x] Unit tests for adapter-utils (`normalizeProviderError`).
+- [x] Adapter-shape runtime test (validates exports).
+- [x] Unit test for auto-retry when model is not supported.
 - [ ] Unit tests for `renderMarkdown` (non-streaming snapshots).
-- [ ] Integration test: mock server streaming -> streaming renderer -> final output matches non-streaming.
-- [ ] Shell suggestion tests: prompt -> parsed JSON suggestion.
+- [ ] Integration test: mock server streaming → streaming renderer → parity check.
+- [ ] Shell suggestion mode tests: prompt → parsed JSON.
 
-## CI checklist
-- [x] Separate unit and integration jobs in `.github/workflows/ci.yml`.
+## CI Checklist
+
+- [x] Separate unit/integration jobs in `.github/workflows/ci.yml`.
 - [x] Coverage job writes LCOV to `coverage/lcov.info` and uploads artifact.
-- [x] Ensure integration job is gated for tags/releases (it currently is).
-- Next small task: add optional on-demand workflow dispatch to run integration+coverage for feature branches.
+- [x] Integration job gated for tags/releases.
+- [ ] Optional on-demand workflow dispatch for integration+coverage on feature branches.
 
-## Who/when
-- Pick one of the "next small task" items above and I will implement it, add tests, and run the suite locally.
+## Prioritized TODOs
 
+**P0 (High - Correctness/Test Stability)**
+- [x] Centralize shared types in `src/providers/types.ts`.
+- [x] Remove library-level `Deno.exit` calls; only CLI handles exit.
+- [x] Deduplicate provider modules under `src/providers/`.
+
+**P1 (Important - Core Features & DX)**
+- [x] Formalize provider adapter contract: TS interface & runtime checks.
+- [ ] Add `StreamRenderer` abstraction and wire into `runCore`.
+- [ ] Ensure streaming writes respect stdout backpressure (`await Deno.stdout.write(...)`).
+
+**P2 (Tests/CI Hygiene)**
+- [ ] Integration test harness docs and `scripts/test-integration.sh` showing required Deno flags.
+- [x] Harden mock server helpers.
+- [ ] Test for generator cancellation (simulate SIGINT).
+
+**P3 (UX/Features)**
+- [ ] Implement streaming markdown renderer (handles token boundaries/incremental rendering).
+- [ ] Wire CLI flag (`--stream`) and suggestion mode (`--mode=suggest`).
+- [ ] Add snapshot tests for rendered markdown (streamed & non-streamed).
+
+## Recent Improvements
+
+- [x] Centralized provider types and adapter interface.
+- [x] Centralized error handling (`normalizeProviderError`, etc).
+- [x] Providers refactored to use `ProviderOptions`.
+- [x] Runtime validation of adapters in tests.
+- [x] CLI `--auto-retry-model` for automatic model retry.
+- [x] Logging is now permission-safe.
+
+## Security & Permissions
+
+- [x] Process exit calls only in CLI; library code should not exit.
+- [x] Tests avoid permissions where possible; prefer dependency injection and in-process helpers.
+
+## Efficiency & Performance
+
+- [x] Streaming is efficient for small messages; batching and backpressure (`await Deno.stdout.write(...)`) recommended for larger streams.
+
+## Maintainability Recommendations
+
+- [ ] Add `StreamRenderer` interface, wire into `runCore` (high priority).
+- [ ] Per-provider default-model map for retries.
+- [ ] Ensure adapters always use `throwNormalized` for error consistency.
+- [ ] Document integration test harness and script.
+
+## Quick Wins (Recently Completed)
+
+- [x] Formalized adapter type and runtime test.
+- [x] Centralized error normalization.
+- [x] `--auto-retry-model` CLI flag and unit test.
+
+## Quick Wins (Available To Pick)
+
+- [ ] Add `StreamRenderer` interface and no-op implementation, wire into `runCore`.
+- [ ] Implement per-provider default-model mapping.
+- [ ] Implement streaming renderer and add snapshot tests.
+
+## Requirements Coverage
+
+- [x] Centralized shared types
+- [x] Remove library-level process exits
+- [x] Deduplicate provider modules
+- [x] Provider adapter contract (TS + runtime)
+- [ ] StreamRenderer
+- [ ] Streaming markdown renderer

@@ -1,5 +1,5 @@
-import type { ChatRequest, Fetcher } from "../src/providers/types.ts";
-import { ensureResponseOk } from "../src/providers/adapter_utils.ts";
+import type { ChatRequest, Fetcher } from "./types.ts";
+import { ensureResponseOk } from "./adapter_utils.ts";
 
 export async function chatCompletionRequest(
   params: {

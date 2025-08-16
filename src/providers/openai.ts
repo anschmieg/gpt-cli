@@ -1,14 +1,5 @@
-export interface ChatMessage {
-  role: "system" | "user" | "assistant";
-  content: string;
-}
-
-export interface ChatRequest {
-  model?: string;
-  messages: ChatMessage[];
-  stream?: boolean;
-}
-export type Fetcher = (input: string, init?: RequestInit) => Promise<Response>;
+import type { ChatRequest, Fetcher } from "./types.ts";
+import { ensureResponseOk } from "./adapter_utils.ts";
 
 export interface ChatOptions {
   baseUrl?: string;
@@ -59,10 +50,7 @@ export async function chatCompletion(
     body: JSON.stringify(body),
   });
 
-  if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`provider error: ${res.status} ${res.statusText}: ${text}`);
-  }
+  await ensureResponseOk(res);
 
   const data = await res.json();
   // Expect the mock server to return OpenAI-style response with choices[0].message.content
@@ -86,7 +74,7 @@ export async function chatCompletionStream(
     ((input, init) => fetch(input, init));
 
   // dynamic import of the shared streaming helper to avoid duplication
-  const mod = await import("../../providers/api_openai_compatible.ts");
+  const mod = await import("./api_openai_compatible.ts");
   const gen = mod.chatCompletionRequestStream({
     url: `${baseUrl}/v1/chat/completions`,
     apiKey: "",
