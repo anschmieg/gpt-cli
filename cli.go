@@ -17,6 +17,7 @@ type CLIConfig struct {
 	Markdown      bool
 	RetryModel    bool
 	Stream        bool
+	Suggest       bool
 	Help          bool
 	Prompt        string
 }
@@ -41,6 +42,7 @@ func parseArgs(args []string) (*CLIConfig, error) {
 	fs.BoolVar(&config.Markdown, "markdown", config.Markdown, "Enable markdown output")
 	fs.BoolVar(&config.RetryModel, "retry-model", config.RetryModel, "Retry with default model if specified model fails")
 	fs.BoolVar(&config.Stream, "stream", config.Stream, "Enable streaming output")
+	fs.BoolVar(&config.Suggest, "suggest", config.Suggest, "Shell suggestion mode - output structured JSON suggestions")
 	fs.BoolVar(&config.Help, "help", config.Help, "Show help")
 	fs.BoolVar(&config.Help, "h", config.Help, "Show help")
 
@@ -70,6 +72,7 @@ Options:
   --markdown     Enable markdown output (default: true)
   --retry-model  Retry with default model if specified model fails
   --stream       Enable streaming output
+  --suggest      Shell suggestion mode - output structured JSON suggestions
   -h, --help     Show help`)
 }
 
@@ -101,6 +104,7 @@ func runCLI(args []string) error {
 		Prompt:         config.Prompt,
 		UseMarkdown:    config.Markdown,
 		Stream:         config.Stream,
+		SuggestMode:    config.Suggest,
 	}
 
 	// Build provider options from environment

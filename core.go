@@ -19,6 +19,7 @@ type CoreConfig struct {
 	Prompt         string
 	UseMarkdown    bool
 	Stream         bool
+	SuggestMode    bool
 }
 
 // ProviderOptions contains options passed to provider adapters
@@ -66,6 +67,11 @@ func getDefaultModel(provider string) string {
 
 // runCore is the main orchestration function that handles provider calls and output
 func runCore(config *CoreConfig, providerOpts *ProviderOptions) error {
+	// Handle suggestion mode separately
+	if config.SuggestMode {
+		return runSuggestionMode(config, providerOpts)
+	}
+
 	// Set default system prompt if not provided
 	if config.System == "" {
 		config.System = "You are an AI assistant called via CLI. Respond concisely and clearly, focusing only on the user's prompt. Include only very brief explanations unless explicitly asked."
@@ -123,13 +129,16 @@ func runCore(config *CoreConfig, providerOpts *ProviderOptions) error {
 		if response.Text != "" {
 			fmt.Print(response.Text)
 		} else {
-			fmt.Print(response.Markdown)
+			// Even for non-markdown preference, render markdown nicely
+			renderer := NewMarkdownRenderer(false) // No colors for plain text mode
+			fmt.Print(renderer.Render(response.Markdown))
 		}
 	} else {
 		// Prefer markdown, fall back to text
 		if response.Markdown != "" {
-			// For now, output markdown as-is (TODO: implement markdown rendering)
-			fmt.Print(response.Markdown)
+			// Render markdown with ANSI formatting
+			renderer := NewMarkdownRenderer(true) // Enable colors for markdown mode
+			fmt.Print(renderer.Render(response.Markdown))
 		} else {
 			fmt.Print(response.Text)
 		}

@@ -70,3 +70,35 @@ func TestConfigDefaults(t *testing.T) {
 		t.Errorf("Expected model to be set to 'gpt-4', got %s", cliConfig.Model)
 	}
 }
+
+func TestSaveConfig(t *testing.T) {
+	// Create a temporary directory for testing
+	tmpDir := t.TempDir()
+	
+	// Override home directory for testing
+	t.Setenv("HOME", tmpDir)
+	
+	config := &Config{
+		DefaultProvider: "test-provider",
+		DefaultModel:    "test-model",
+	}
+	
+	err := SaveConfig(config)
+	if err != nil {
+		t.Errorf("SaveConfig failed: %v", err)
+	}
+	
+	// Try to load the saved config
+	loadedConfig, err := LoadConfig()
+	if err != nil {
+		t.Errorf("LoadConfig failed after save: %v", err)
+	}
+	
+	if loadedConfig.DefaultProvider != config.DefaultProvider {
+		t.Errorf("Loaded provider doesn't match saved provider")
+	}
+	
+	if loadedConfig.DefaultModel != config.DefaultModel {
+		t.Errorf("Loaded model doesn't match saved model")
+	}
+}

@@ -80,6 +80,12 @@ func streamChatCompletion(config *CoreConfig, opts *ProviderOptions) error {
 		return fmt.Errorf("API returned status %d", resp.StatusCode)
 	}
 
+	// Initialize streaming markdown renderer if markdown is enabled
+	var streamRenderer *StreamingMarkdownRenderer
+	if config.UseMarkdown {
+		streamRenderer = NewStreamingMarkdownRenderer(true)
+	}
+
 	// Process streaming response
 	scanner := bufio.NewScanner(resp.Body)
 	for scanner.Scan() {
@@ -110,8 +116,26 @@ func streamChatCompletion(config *CoreConfig, opts *ProviderOptions) error {
 
 			// Output the content
 			if len(chunk.Choices) > 0 && chunk.Choices[0].Delta.Content != "" {
-				fmt.Print(chunk.Choices[0].Delta.Content)
+				content := chunk.Choices[0].Delta.Content
+				
+				if config.UseMarkdown && streamRenderer != nil {
+					// Process through streaming markdown renderer
+					rendered := streamRenderer.ProcessChunk(content)
+					if rendered != "" {
+						fmt.Print(rendered)
+					}
+				} else {
+					// Output raw content
+					fmt.Print(content)
+				}
 			}
+		}
+	}
+
+	// Flush any remaining content from the streaming renderer
+	if config.UseMarkdown && streamRenderer != nil {
+		if remaining := streamRenderer.Flush(); remaining != "" {
+			fmt.Print(remaining)
 		}
 	}
 

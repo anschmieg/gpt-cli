@@ -22,6 +22,9 @@ func TestParseArgs(t *testing.T) {
 				Verbose:     false,
 				Markdown:    true,
 				RetryModel:  false,
+				Stream:      false,
+				Suggest:     false,
+				Help:        false,
 				Prompt:      "test prompt",
 			},
 		},
@@ -35,6 +38,9 @@ func TestParseArgs(t *testing.T) {
 				Verbose:     false,
 				Markdown:    true,
 				RetryModel:  false,
+				Stream:      false,
+				Suggest:     false,
+				Help:        false,
 				Prompt:      "hello world",
 			},
 		},
@@ -47,6 +53,9 @@ func TestParseArgs(t *testing.T) {
 				Verbose:     true,
 				Markdown:    true,
 				RetryModel:  false,
+				Stream:      false,
+				Suggest:     false,
+				Help:        false,
 				Prompt:      "test",
 			},
 		},
@@ -59,8 +68,70 @@ func TestParseArgs(t *testing.T) {
 				Verbose:     false,
 				Markdown:    true,
 				RetryModel:  false,
+				Stream:      false,
+				Suggest:     false,
 				Help:        true,
 				Prompt:      "",
+			},
+		},
+		{
+			name: "suggest flag",
+			args: []string{"--suggest", "list files"},
+			expected: &CLIConfig{
+				Provider:    "copilot",
+				Temperature: 0.6,
+				Verbose:     false,
+				Markdown:    true,
+				RetryModel:  false,
+				Stream:      false,
+				Suggest:     true,
+				Help:        false,
+				Prompt:      "list files",
+			},
+		},
+		{
+			name: "stream flag",
+			args: []string{"--stream", "test streaming"},
+			expected: &CLIConfig{
+				Provider:    "copilot",
+				Temperature: 0.6,
+				Verbose:     false,
+				Markdown:    true,
+				RetryModel:  false,
+				Stream:      true,
+				Suggest:     false,
+				Help:        false,
+				Prompt:      "test streaming",
+			},
+		},
+		{
+			name: "all flags combined",
+			args: []string{
+				"--provider", "openai",
+				"--model", "gpt-4",
+				"--temperature", "0.9",
+				"--system", "custom system",
+				"--file", "/path/to/file",
+				"--verbose",
+				"--markdown=false",
+				"--retry-model",
+				"--stream",
+				"--suggest",
+				"complex prompt",
+			},
+			expected: &CLIConfig{
+				Provider:    "openai",
+				Model:       "gpt-4",
+				Temperature: 0.9,
+				System:      "custom system",
+				File:        "/path/to/file",
+				Verbose:     true,
+				Markdown:    false,
+				RetryModel:  true,
+				Stream:      true,
+				Suggest:     true,
+				Help:        false,
+				Prompt:      "complex prompt",
 			},
 		},
 	}
@@ -120,5 +191,98 @@ func TestIsModelNotSupportedError(t *testing.T) {
 				t.Errorf("isModelNotSupportedError() = %v, expected %v", got, tt.expected)
 			}
 		})
+	}
+}
+
+func TestRunCLI(t *testing.T) {
+	// Start mock server for testing
+	server := startMockTestServer()
+	defer server.Close()
+
+	// Set test environment variables
+	t.Setenv("GPT_CLI_TEST", "1")
+	t.Setenv("MOCK_SERVER_URL", server.URL)
+
+	tests := []struct {
+		name    string
+		args    []string
+		wantErr bool
+	}{
+		{
+			name:    "basic_prompt",
+			args:    []string{"hello world"},
+			wantErr: false,
+		},
+		{
+			name:    "help_flag",
+			args:    []string{"--help"},
+			wantErr: false,
+		},
+		{
+			name:    "empty_prompt_no_help",
+			args:    []string{},
+			wantErr: false, // Should show help
+		},
+		{
+			name:    "suggest_mode",
+			args:    []string{"--suggest", "list files"},
+			wantErr: false,
+		},
+		{
+			name:    "stream_mode",
+			args:    []string{"--stream", "test streaming"},
+			wantErr: false,
+		},
+		{
+			name:    "with_provider",
+			args:    []string{"--provider", "openai", "test"},
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			err := runCLI(tt.args)
+			
+			if (err != nil) != tt.wantErr {
+				t.Errorf("runCLI() error = %v, wantErr %v", err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestApplyConfigDefaults(t *testing.T) {
+	fileConfig := &Config{
+		DefaultProvider:    "file-provider",
+		DefaultModel:       "file-model",
+		DefaultTemperature: 0.8,
+		DefaultSystem:      "file-system",
+	}
+
+	cliConfig := &CLIConfig{
+		Provider:    "copilot", // Should be kept
+		Model:       "",        // Should be set from file
+		Temperature: 0.6,       // Should be kept
+		System:      "",        // Should be set from file
+	}
+
+	ApplyConfigDefaults(cliConfig, fileConfig)
+
+	// Provider should be overridden by file config since it's non-empty
+	if cliConfig.Provider != "file-provider" {
+		t.Errorf("Expected provider to be overridden to 'file-provider', got %s", cliConfig.Provider)
+	}
+
+	if cliConfig.Model != "file-model" {
+		t.Errorf("Expected model to be set to 'file-model', got %s", cliConfig.Model)
+	}
+
+	// Temperature should be overridden by file config
+	if cliConfig.Temperature != 0.8 {
+		t.Errorf("Expected temperature to be overridden to 0.8, got %f", cliConfig.Temperature)
+	}
+
+	if cliConfig.System != "file-system" {
+		t.Errorf("Expected system to be set to 'file-system', got %s", cliConfig.System)
 	}
 }
