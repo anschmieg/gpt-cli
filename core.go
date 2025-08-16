@@ -149,12 +149,7 @@ func isModelNotSupportedError(err error) bool {
 		strings.Contains(errStr, "requested model is not supported")
 }
 
-// tryStreamingProvider attempts to use streaming API
-func tryStreamingProvider(config *CoreConfig, providerOpts *ProviderOptions) error {
-	// For now, return error to indicate streaming not implemented
-	// TODO: Implement streaming support
-	return fmt.Errorf("streaming not yet implemented")
-}
+// tryStreamingProvider attempts to use streaming API - now implemented in streaming.go
 
 // callProvider calls the appropriate provider adapter
 func callProvider(config *CoreConfig, providerOpts *ProviderOptions) (*ProviderResponse, error) {

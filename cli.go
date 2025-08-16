@@ -85,6 +85,10 @@ func runCLI(args []string) error {
 		return nil
 	}
 
+	// Load configuration file if it exists
+	fileConfig, _ := LoadConfig()
+	ApplyConfigDefaults(config, fileConfig)
+
 	// Create core config and run
 	coreConfig := &CoreConfig{
 		Provider:       config.Provider,

@@ -1,3 +1,5 @@
+//go:build ignore
+
 // Simple mock server for testing the CLI
 package main
 
