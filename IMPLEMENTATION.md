@@ -1,69 +1,58 @@
-## Projektbeschreibung
-
-Dieses Projekt ist ein portabler **CLI-Wrapper für OpenAI-kompatible LLM APIs**,
-entwickelt mit **Deno** für eine schlanke, sichere und plattformübergreifende
-Ausführung.\
-Das Tool ermöglicht es, KI-Modelle (z. B. OpenAI, Gemini openai-compatible,
-Copilot) direkt aus der Kommandozeile anzusprechen – ohne komplexe Installation
 – und unterstützt konfigurierbare Parameter wie Modellwahl, Temperatur,
-System-Prompt und Dateiuploads.
+# Implementation checklist
 
-Deno wird aufgrund seiner integrierten Features wie **Permission-Management**,
-**Bundling zu einer einzelnen Binary** und **Standardbibliotheken** gewählt, um
-maximale Portabilität und minimale Abhängigkeiten zu gewährleisten.
+This file is a compact checklist covering project structure, goals, required features, current status, and small actionable tasks you can pick and run immediately.
 
-## Ziele
+## Project overview
+- [x] CLI parsing (`cli.ts`) — parses flags, builds `CoreConfig` and calls `runCore`.
+- [x] Core orchestration (`core.ts`) — builds provider call, handles responses, prints output.
+- [x] Providers (`providers/*.ts`) — adapter modules for OpenAI-compatible APIs (openai, copilot, gemini).
+- [x] Mock server (`mock-openai/mock-server.ts`) — local mock OpenAI-compatible server used for integration tests.
+- [~] Utils (`utils/*.ts`) — logging, markdown rendering, small helpers. (partial)
 
-- **Einfache Nutzung**: Intuitive CLI mit klaren Optionen, ähnlich gängigen
-  Unix-Tools.
-- **Portabilität**: Läuft als einzelnes Binary ohne externe Dependencies.
-- **Modularität**: Klare Trennung zwischen CLI, Core-Logik und Providern, um
-  spätere Erweiterungen (Streaming, Chat-History, Shell-Suggestions) einfach
-  einzubauen.
-- **Multi-Provider-Support**: Einfache Integration verschiedener GPT-kompatibler
-  APIs.
-- **Sicherheit**: Striktes Berechtigungsmanagement dank Deno-Permissions.
-- **Erweiterbarkeit**: Architektur erlaubt, neue Features schrittweise
-  einzufügen, ohne bestehende Teile stark anzupassen.
+## Goals
+- [ ] Reliable non-streaming responses (text/markdown).
+- [ ] Streaming support (SSE / incremental parsing).
+- [ ] Robust markdown rendering (non-streaming and streaming).
+- [ ] Shell suggestion mode (safe suggestion output, no execution by default).
+- [x] CI coverage generation and artifacts.
 
-Okay – hier ist die Funktionsübersicht mit der dahinterliegenden Logik für die
-**erste synchrone Version** unseres Deno-CLI-Tools:
+## Feature checklist & status
 
-### 1. **CLI‐Parsing (`cli.ts`)**
+1) Streaming + non-streaming responses
+- [x] Mock server provides SSE for streaming.
+- [ ] Provider adapters expose streaming path (AsyncGenerator or callback).
+- [ ] Core supports streaming provider output and progressive printing.
+- Next small task: implement streaming read in `providers/api_openai_compatible.ts` and add a unit/integration test.
 
-- **Funktion**: Liest alle Optionen und Argumente (z. B. `--provider`,
-  `--model`, Prompt) ein.
-- **Logik**: Verwendet `std/flags` von Deno, speichert die Werte in einer
-  strukturierten Config. Übergibt Config + Prompt an `core`.
+2) Markdown parsing (non-streaming)
+- [ ] Implement `renderMarkdown` in `utils/markdown.ts` to produce ANSI-decorated output for terminals.
+- Next small task: add simple renderer (headings, emphasis, lists, code fences) and tests.
 
-### 2. **Core‐Steuerung (`core.ts`)**
+3) Markdown parsing for streaming responses
+- [ ] Implement streaming tokenizer/renderer that can handle token boundaries across chunks.
+- Next small task: implement buffered chunk renderer (buffer N KB, parse, render) as interim solution.
 
-- **Funktion**: Kümmert sich um den Ablauf zwischen CLI und Provider.
-- **Logik**:
-  - Nimmt die Config entgegen
-  - Baut daraus den Request (inkl. System-Prompt, Temperatur, max Tokens)
-  - Wählt das passende Provider-Modul
-  - Ruft den synchronen API-Call auf
-  - Gibt das Resultat formatiert zurück (z. B. Plaintext oder Markdown)
+4) Shell suggestion mode
+- [ ] Add `--suggest` or `--mode=suggest` flag in `cli.ts` and wire through `core.ts`.
+- [ ] Implement a deterministic JSON response contract from provider prompts for suggestions.
+- Next small task: add CLI flag and parse-only path that returns parsed suggestion JSON (no execution).
 
-### 3. **Provider‐Module (`providers/*.ts`)**
+5) Markdown visual rendering (streaming)
+- [ ] Integrate streaming renderer into CLI printing for progressive visual output.
+- Next small task: create a streaming test harness using the mock server and verify output parity with non-streamed renderer.
 
-- **Funktion**: Kapseln die API-spezifische Request-Logik (z. B. OpenAI,
-  Gemini).
-- **Logik**:
-  - Erstellen den richtigen HTTP-Request (URL, Headers, Body)
-  - Nutzen `fetch` für den API-Call
-  - Extrahieren den relevanten Text aus der JSON-Response
-  - Bei Fehlern → strukturierte Fehlermeldung zurückgeben
+## Tests to add
+- [ ] Unit tests for `renderMarkdown` (non-streaming snapshots).
+- [ ] Integration test: mock server streaming -> streaming renderer -> final output matches non-streaming.
+- [ ] Shell suggestion tests: prompt -> parsed JSON suggestion.
 
-### 4. **Utils (`utils/*.ts`)**
+## CI checklist
+- [x] Separate unit and integration jobs in `.github/workflows/ci.yml`.
+- [x] Coverage job writes LCOV to `coverage/lcov.info` and uploads artifact.
+- [x] Ensure integration job is gated for tags/releases (it currently is).
+- Next small task: add optional on-demand workflow dispatch to run integration+coverage for feature branches.
 
-- **Funktion**: Gemeinsame Hilfsfunktionen — z. B. Logging,
-  Clipboard-Integration, Markdown-Rendering.
-- **Logik**:
-  - Trennen Präsentationslogik (z. B. Markdown) von API-Logik
-  - Optionales farbiges Debug-Logging, wenn `--verbose`
+## Who/when
+- Pick one of the "next small task" items above and I will implement it, add tests, and run the suite locally.
 
-### Ablauf gesamt
-
-`CLI → Config → Core → Provider → fetch → Response → Ausgabe`
