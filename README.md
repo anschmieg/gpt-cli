@@ -18,8 +18,9 @@ suites used by CI.
 - `./src/cli.ts` contains a small, testable `parseArgs` helper and a `runCli`
   shim used by unit tests. `runCli` currently returns a greeting and echoes
   provided arguments (keeps tests fast and deterministic).
-- A Deno-based mock OpenAI-compatible server lives under `tests/mock-server-openai/` and is
-  used by the integration tests to avoid network calls to external APIs.
+- A Deno-based mock OpenAI-compatible server lives under
+  `tests/mock-server-openai/` and is used by the integration tests to avoid
+  network calls to external APIs.
 
 ## Defaults
 
@@ -111,8 +112,26 @@ deno coverage --lcov coverage > coverage.lcov
 
 ## Mock server
 
-The mock server is implemented in `tests/mock-server-openai/` and is intentionally local and
-lightweight so integration tests can run offline and deterministically.
+The mock server is implemented in `tests/mock-server-openai/` and is
+intentionally local and lightweight so integration tests can run offline and
+deterministically.
+
+### Changing the mock server URL
+
+The project expects the local mock server at `http://127.0.0.1:8086` by default.
+If you need to run the mock server on a different host or port, update the
+following locations so everything remains consistent:
+
+- `src/config.ts`: the canonical `MOCK_SERVER_URL` constant used by the code and
+  tests.
+- `.github/workflows/ci.yml`: the `MOCK_SERVER_URL` environment variable set in
+  the integration and coverage jobs.
+- `deno.json`: the `test:integration` and `test:coverage` tasks prefix
+  `MOCK_SERVER_URL` when they run locally.
+
+Prefer changing `src/config.ts` and the CI env first; keeping `deno.json` in
+sync makes running the tests locally more convenient but is optional if you
+always set the env manually.
 
 ## Notes for contributors
 
@@ -121,6 +140,19 @@ lightweight so integration tests can run offline and deterministically.
 - If you add tests that spawn processes or require network, follow the existing
   patterns and gate those tests behind the `GPT_CLI_TEST` guard where
   appropriate.
+
+### Local git hooks
+
+This repo contains a `./.githooks/pre-commit` script that runs
+`deno fmt --check`, `deno lint`, and the fast unit tests before a commit. To
+enable it locally run:
+
+```bash
+git config core.hooksPath .githooks
+chmod +x .githooks/pre-commit
+```
+
+After enabling, the pre-commit hook will run automatically on `git commit`.
 
 ## License
 

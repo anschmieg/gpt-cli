@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+echo "pre-commit: running deno fmt (auto), deno lint; abort on changes/failures"
+
+if ! command -v deno >/dev/null 2>&1; then
+  echo "deno not found in PATH. Install Deno: https://deno.land/manual@v1.0.0/getting_started/installation"
+  exit 1
+fi
+
+echo "-> running deno fmt"
+if ! fmt_output=$(deno fmt 2>&1); then
+  echo "\nERROR: deno fmt failed — aborting commit"
+  echo "--------------------------------------------------"
+  echo "$fmt_output"
+  echo "--------------------------------------------------"
+  exit 1
+fi
+
+echo "-> running deno lint"
+if ! lint_output=$(deno lint 2>&1); then
+  echo "\nERROR: deno lint failed — aborting commit"
+  echo "--------------------------------------------------"
+  echo "$lint_output"
+  echo "--------------------------------------------------"
+  echo "Fix the reported lint errors and try committing again."
+  exit 1
+fi
+
+echo "-> running deno task test:unit"
+if ! test_output=$(deno task test:unit 2>&1); then
+  echo "\nERROR: deno task test:unit failed — aborting commit"
+  echo "--------------------------------------------------"
+  echo "$test_output"
+  echo "--------------------------------------------------"
+  echo "Fix the failing tests and try committing again."
+  exit 1
+fi
+
+echo "pre-commit checks passed"
