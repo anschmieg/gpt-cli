@@ -83,3 +83,5 @@ export async function chatCompletionStream(
   });
   return gen;
 }
+
+export type { Fetcher };

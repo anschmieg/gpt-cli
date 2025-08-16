@@ -1,5 +1,5 @@
 import { chatCompletionRequest } from "../../src/providers/api_openai_compatible.ts";
-import { assertEquals } from "https://deno.land/std@0.201.0/testing/asserts.ts";
+import { assertEquals } from "jsr:@std/assert/equals";
 import { normalizeProviderError } from "../../src/providers/adapter_utils.ts";
 
 Deno.test("chatCompletion returns mocked content without network", async () => {

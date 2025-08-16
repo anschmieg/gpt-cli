@@ -10,11 +10,10 @@ for (const name of adapters) {
     console.log(name, "OK");
   } catch (err) {
     const obj = err as unknown;
-    const msg =
-      (obj && typeof obj === "object" &&
-          (obj as Record<string, unknown>)["message"])
-        ? String((obj as Record<string, unknown>)["message"])
-        : String(err);
+    const msg = (obj && typeof obj === "object" &&
+        (obj as Record<string, unknown>)["message"])
+      ? String((obj as Record<string, unknown>)["message"])
+      : String(err);
     console.error(name, "FAILED:", msg);
     Deno.exit(2);
   }

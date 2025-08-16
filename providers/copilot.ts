@@ -70,3 +70,5 @@ export async function callProvider(
   });
   return { text };
 }
+
+export type { Fetcher };

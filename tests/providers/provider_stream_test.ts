@@ -1,4 +1,4 @@
-import { assertEquals } from "https://deno.land/std@0.201.0/testing/asserts.ts";
+import { assertEquals } from "jsr:@std/assert/equals";
 import { chatCompletionRequestStream } from "../../src/providers/api_openai_compatible.ts";
 
 // Helper: create a Response-like object with a ReadableStream body that emits SSE-style chunks
