@@ -20,7 +20,7 @@ jobs:
           deno-version: "latest"
 
       - name: Cache deps
-        run: deno cache --unstable ./src/providers/openai.ts
+        run: deno cache ./src/providers/openai.ts
 
       - name: Run deno lint
         run: deno lint
@@ -36,7 +36,8 @@ jobs:
             tests/config_test.ts \
             tests/core_test.ts \
             tests/utils_test.ts \
-            --allow-read
+            --allow-read \
+            --allow-env
 
   integration:
     name: Integration tests (mock server)
@@ -80,10 +81,11 @@ jobs:
           deno test --coverage=coverage tests/cli tests/providers tests/config_test.ts tests/core_test.ts tests/utils_test.ts tests/integration --allow-run --allow-net=127.0.0.1:8086 --allow-env --allow-read
 
       - name: Generate lcov
-        run: deno coverage --lcov coverage > coverage.lcov
+        run: |
+          deno coverage --lcov coverage > coverage/lcov.info
 
       - name: Upload lcov artifact
         uses: actions/upload-artifact@v4
         with:
           name: coverage-lcov
-          path: coverage.lcov
+          path: coverage/lcov.info
