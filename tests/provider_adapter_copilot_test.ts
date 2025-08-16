@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert";
+import { expect } from "jsr:@std/expect";
 import { callProvider as copilot } from "../providers/copilot.ts";
 import type { Fetcher } from "../providers/copilot.ts";
 
@@ -29,9 +29,9 @@ Deno.test("copilot adapter calls fetcher with correct URL and returns text", asy
     baseUrl: "https://copilot.example",
     fetcher,
   });
-  assertEquals(res.text, "hello from copilot");
-  assertEquals(calledUrl, "https://copilot.example/v1/chat/completions");
+  expect(res.text).toBe("hello from copilot");
+  expect(calledUrl).toBe("https://copilot.example/v1/chat/completions");
   const headers = calledInit?.headers as Record<string, string> | undefined;
   const auth = headers && headers["Authorization"];
-  assertEquals(auth, "Bearer cp-key");
+  expect(auth).toBe("Bearer cp-key");
 });

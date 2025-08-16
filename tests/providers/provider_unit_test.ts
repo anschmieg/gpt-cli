@@ -1,5 +1,5 @@
 import { chatCompletionRequest } from "../../src/providers/api_openai_compatible.ts";
-import { assertEquals } from "jsr:@std/assert/equals";
+import { expect } from "jsr:@std/expect";
 import { normalizeProviderError } from "../../src/providers/adapter_utils.ts";
 
 Deno.test("chatCompletion returns mocked content without network", async () => {
@@ -16,7 +16,7 @@ Deno.test("chatCompletion returns mocked content without network", async () => {
     body: { messages: [{ role: "user", content: "hi" }] },
     fetcher,
   });
-  assertEquals(res, "hi");
+  expect(res).toBe("hi");
 });
 
 Deno.test("chatCompletion surfaces provider errors", async () => {
@@ -37,6 +37,6 @@ Deno.test("chatCompletion surfaces provider errors", async () => {
   } catch (err) {
     // Assert normalized shape for provider errors
     const n = normalizeProviderError(err);
-    assertEquals(typeof n.message, "string");
+    expect(typeof n.message).toBe("string");
   }
 });

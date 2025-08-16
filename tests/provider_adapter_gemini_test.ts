@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert/equals";
+import { expect } from "jsr:@std/expect";
 import { callProvider as gemini } from "../providers/gemini.ts";
 import type { Fetcher } from "../providers/gemini.ts";
 
@@ -26,12 +26,11 @@ Deno.test("gemini adapter calls fetcher with correct URL and returns text", asyn
     apiKey: "g-key",
     fetcher,
   });
-  assertEquals(res.text, "hello from gemini");
-  assertEquals(
-    calledUrl,
+  expect(res.text).toBe("hello from gemini");
+  expect(calledUrl).toBe(
     "https://generativelanguage.googleapis.com/v1beta/openai",
   );
   const headers = calledInit?.headers as Record<string, string> | undefined;
   const auth = headers && headers["Authorization"];
-  assertEquals(auth, "Bearer g-key");
+  expect(auth).toBe("Bearer g-key");
 });

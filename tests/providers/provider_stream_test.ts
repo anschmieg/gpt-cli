@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert/equals";
+import { expect } from "jsr:@std/expect";
 import { chatCompletionRequestStream } from "../../src/providers/api_openai_compatible.ts";
 
 // Helper: create a Response-like object with a ReadableStream body that emits SSE-style chunks
@@ -50,5 +50,5 @@ Deno.test("chatCompletionRequestStream yields SSE data chunks", async () => {
     parts.push(p);
   }
   const assembled = parts.join("");
-  assertEquals(assembled, content);
+  expect(assembled).toBe(content);
 });

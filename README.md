@@ -1,5 +1,7 @@
 # gpt-cli
 
+![CI Status](https://github.com/anschmieg/gpt-cli/actions/workflows/ci.yml/badge.svg)
+
 A small, test-friendly Deno CLI that acts as a thin wrapper around provider APIs
 (OpenAI-compatible by default) and contains a fast local mock server used by the
 integration tests.

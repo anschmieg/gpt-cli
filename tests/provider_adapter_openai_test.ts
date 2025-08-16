@@ -1,4 +1,4 @@
-import { assertEquals } from "jsr:@std/assert/equals";
+import { expect } from "jsr:@std/expect";
 import { callProvider as openai } from "../providers/openai.ts";
 import type { Fetcher } from "../providers/openai.ts";
 
@@ -27,10 +27,10 @@ Deno.test("openai adapter calls fetcher with correct URL and returns text", asyn
     baseUrl: "https://api.example",
     fetcher,
   });
-  assertEquals(res.text, "hello from openai");
-  assertEquals(calledUrl, "https://api.example/v1/chat/completions");
+  expect(res.text).toBe("hello from openai");
+  expect(calledUrl).toBe("https://api.example/v1/chat/completions");
   // basic header check
   const headers = calledInit?.headers as Record<string, string> | undefined;
   const auth = headers && headers["Authorization"];
-  assertEquals(auth, "Bearer test-key");
+  expect(auth).toBe("Bearer test-key");
 });
