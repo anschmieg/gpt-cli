@@ -10,6 +10,12 @@ const ANSI_YELLOW = "\x1b[33m";
 const ANSI_GREEN = "\x1b[32m";
 
 export function renderMarkdown(md: string): string {
+  // Only process if markdown patterns are present
+  const hasMarkdown =
+    /(^#{1,6}\s+)|(^\s*[-*+]\s+)|(```)|(`[^`]+`)|(\*\*[^*]+\*\*)|(\*[^*]+\*)/
+      .test(md);
+  if (!hasMarkdown) return md;
+
   const lines = md.split(/\r?\n/);
   const out: string[] = [];
   let inCodeFence = false;
@@ -50,18 +56,18 @@ export function renderMarkdown(md: string): string {
     // Inline code `x`
     let processed = line.replace(
       /`([^`]+)`/g,
-      (_m, p1) => `${ANSI_GREEN}${p1}${ANSI_RESET}`,
+      (_m: string, p1: string) => `${ANSI_GREEN}${p1}${ANSI_RESET}`,
     );
 
     // Bold **text**
     processed = processed.replace(
       /\*\*([^*]+)\*\*/g,
-      (_m, p1) => `${ANSI_BOLD}${p1}${ANSI_RESET}`,
+      (_m: string, p1: string) => `${ANSI_BOLD}${p1}${ANSI_RESET}`,
     );
     // Italic *text*
     processed = processed.replace(
       /\*([^*]+)\*/g,
-      (_m, p1) => `${ANSI_YELLOW}${p1}${ANSI_RESET}`,
+      (_m: string, p1: string) => `${ANSI_YELLOW}${p1}${ANSI_RESET}`,
     );
 
     out.push(processed);

@@ -15,7 +15,7 @@ action items are tracked with checkboxes for quick reference and status.
 - [x] Mock server (`tests/mock-server-openai/mock-server.ts`) — local mock
       OpenAI-compatible server for integration tests.
 - [x] Utils (`utils/*.ts`) — logging, markdown rendering, helpers. _(Partial;
-  logging is now permission-safe.)_
+      logging is now permission-safe.)_
 
 ## Project Goals
 
@@ -126,47 +126,46 @@ action items are tracked with checkboxes for quick reference and status.
 
 ## Efficiency & Performance
 
-      (`await Deno.stdout.write(...)`) recommended for larger streams.
+    (`await Deno.stdout.write(...)`) recommended for larger streams.
 
 ## Maintainability Recommendations
 
-
 ## Quick Wins (Recently Completed)
-
 
 ## Quick Wins (Available To Pick)
 
-      `runCore`.
+    `runCore`.
 
 ## Implementation Review (automated)
 
 Summary: focused review of structure, methodologies, and code efficiency.
 
-- [x] Structure: logical and effective
-      - Notes: Clear layering (CLI → core → adapters) and centralized types.
-      - Action: add CONTRIBUTING.md describing where to add adapters (optional).
+- [x] Structure: logical and effective - Notes: Clear layering (CLI → core →
+      adapters) and centralized types. - Action: add CONTRIBUTING.md describing
+      where to add adapters (optional).
 
-- [~] Methodology: appropriate but incomplete
-      - Notes: Adapter pattern and error normalization are sound. Streaming
-            renderer abstraction remains missing.
-      - Action: implement `StreamRenderer` interface and wire into `runCore`.
+- [~] Methodology: appropriate but incomplete - Notes: Adapter pattern and error
+  normalization are sound. Streaming renderer abstraction remains missing. -
+  Action: implement `StreamRenderer` interface and wire into `runCore`.
 
-- [~] Efficiency: mostly good, minor opportunities
-      - Notes: Streaming/backpressure handled in places; audit required for
-            larger payloads. Some duplicated helpers may exist across `src/` and
-            `tests/`.
-      - Action: add `scripts/audit-duplicates.ts` to flag consolidation targets.
+- [~] Efficiency: mostly good, minor opportunities - Notes:
+  Streaming/backpressure handled in places; audit required for larger payloads.
+  Some duplicated helpers may exist across `src/` and `tests/`. - Action: add
+  `scripts/audit-duplicates.ts` to flag consolidation targets.
 
-- [ ] Redundancy/leftovers: cleanup recommended
-      - Notes: Pre-commit hook iterated across implementations (bash/python/deno);
-            ensure only final hook remains and remove legacy artifacts.
-      - Action: remove obsolete hook files and document the Deno hook in README.
+- [ ] Redundancy/leftovers: cleanup recommended - Notes: Pre-commit hook
+      iterated across implementations (bash/python/deno); ensure only final hook
+      remains and remove legacy artifacts. - Action: remove obsolete hook files
+      and document the Deno hook in README.
 
 Next steps (3 small PRs):
 
-- [ ] Add `StreamRenderer` interface + no-op implementation and wire into `runCore`.
+- [ ] Add `StreamRenderer` interface + no-op implementation and wire into
+      `runCore`.
 - [ ] Add `scripts/audit-duplicates.ts` and run to consolidate helpers.
-- [ ] Remove legacy hook scripts and add README section on the Deno pre-commit hook.
+- [ ] Remove legacy hook scripts and add README section on the Deno pre-commit
+      hook.
+
 ## Requirements Coverage
 
 - [x] Centralized shared types

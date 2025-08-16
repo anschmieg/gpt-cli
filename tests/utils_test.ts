@@ -2,9 +2,19 @@ import { debug } from "../src/utils/log.ts";
 import { renderMarkdown } from "../src/utils/markdown.ts";
 
 Deno.test("renderMarkdown returns input unchanged", () => {
-  const input = "# hi";
-  const out = renderMarkdown(input);
-  if (out !== input) throw new Error("markdown renderer changed input");
+  // Plain text: should be unchanged
+  const plain = "hello world";
+  const outPlain = renderMarkdown(plain);
+  if (outPlain !== plain) {
+    throw new Error("markdown renderer changed plain text");
+  }
+
+  // Markdown: should be rendered
+  const md = "# hi";
+  const outMd = renderMarkdown(md);
+  if (outMd === md) {
+    throw new Error("markdown renderer did not render markdown");
+  }
 });
 
 Deno.test("log prints only when verbose env is set", async () => {

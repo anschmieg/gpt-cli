@@ -25,7 +25,7 @@ Deno.test("gemini adapter calls fetcher with correct URL and returns text", asyn
   const res = await gemini({ model: "m", prompt: "p" }, opts);
   expect(res.text).toBe("hello from gemini");
   expect(calledUrl).toBe(
-    "https://generativelanguage.googleapis.com/v1beta/openai",
+    "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
   );
   const auth = calledInit?.headers &&
     (calledInit.headers as Record<string, string>)["Authorization"];
