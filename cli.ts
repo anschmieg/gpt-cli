@@ -15,7 +15,7 @@ export function parseArgs(argv: string[]) {
     boolean: ["verbose", "help", "markdown", "retry-model"],
     default: {
       provider: DEFAULTS.provider,
-      model: DEFAULTS.model,
+      model: undefined,
       temperature: String(DEFAULTS.temperature),
       verbose: DEFAULTS.verbose,
       markdown: DEFAULTS.markdown,

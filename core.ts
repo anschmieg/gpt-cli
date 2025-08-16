@@ -1,6 +1,10 @@
 import { debug } from "./src/utils/log.ts";
 import { renderMarkdown } from "./src/utils/markdown.ts";
-import { DEFAULTS, MOCK_SERVER_URL } from "./src/config.ts";
+import {
+  DEFAULT_MODEL_BY_PROVIDER,
+  DEFAULTS,
+  MOCK_SERVER_URL,
+} from "./src/config.ts";
 
 export interface CoreConfig {
   provider?: string;
@@ -39,7 +43,7 @@ export async function runCore(
     `You are an AI assistant called via CLI. Respond concisely and clearly, focusing only on the user's prompt. Include only very brief explanations unless explicitly asked.`;
   const cfg: CoreConfig = {
     provider: config.provider ?? DEFAULTS.provider,
-    model: config.model ?? DEFAULTS.model,
+    model: config.model ?? undefined,
     temperature: config.temperature ?? DEFAULTS.temperature,
     system: config.system ?? defaultSystem,
     file: config.file,
@@ -48,6 +52,13 @@ export async function runCore(
     prompt: config.prompt,
     useMarkdown: config.useMarkdown ?? true,
   };
+
+  // If the caller didn't provide a model, pick a provider-specific default
+  // when available, otherwise fall back to the global default.
+  if (!cfg.model) {
+    const pn = (cfg.provider ?? "").toLowerCase();
+    cfg.model = DEFAULT_MODEL_BY_PROVIDER[pn] ?? DEFAULTS.model;
+  }
 
   const callProvider = callProviderFn ??
     ((c: CoreConfig, opts?: ProviderOptions) => {

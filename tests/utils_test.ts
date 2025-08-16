@@ -1,4 +1,4 @@
-import { log } from "../src/utils/log.ts";
+import { debug } from "../src/utils/log.ts";
 import { renderMarkdown } from "../src/utils/markdown.ts";
 
 Deno.test("renderMarkdown returns input unchanged", () => {
@@ -20,13 +20,13 @@ Deno.test("log prints only when verbose env is set", async () => {
   };
   try {
     Deno.env.delete("GPT_CLI_VERBOSE");
-    log("x");
+    debug("x");
     if (captured.length !== 0) {
       throw new Error("log printed when it should not");
     }
 
     Deno.env.set("GPT_CLI_VERBOSE", "1");
-    log("y");
+    debug("y");
     if (captured.length === 0) {
       throw new Error("log did not print when verbose");
     }

@@ -13,6 +13,8 @@ export function debug(...args: unknown[]) {
   if (verboseEnabled()) console.log("[DEBUG]", ...args);
 }
 
+// NOTE: prefer `debug` explicitly; no `log` alias exported.
+
 export function info(...args: unknown[]) {
   console.log("[INFO]", ...args);
 }

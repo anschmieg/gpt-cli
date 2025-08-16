@@ -60,6 +60,24 @@ async function postAndEnsure(
   fetcher?: Fetcher,
 ): Promise<Response> {
   const realFetch: Fetcher = fetcher ?? ((input, init) => fetch(input, init));
+  try {
+    // Helpful debug output for troubleshooting runtime URL/body issues.
+    // Use the GPT_CLI_VERBOSE env var to opt-in so we don't leak secrets by default.
+    if (Deno.env.get("GPT_CLI_VERBOSE") === "1") {
+      try {
+        // Log only the URL and model (do not print apiKey or full body).
+        // model may be in body.model or body?.model in some shapes.
+        // eslint-disable-next-line no-console
+        const bodyUnknown = body as unknown as Record<string, unknown> | null;
+        const maybeModel = bodyUnknown ? bodyUnknown["model"] : undefined;
+        console.log("[DEBUG] POST ->", url, "model:", String(maybeModel));
+      } catch {
+        // ignore logging errors
+      }
+    }
+  } catch {
+    // ignore environment access errors
+  }
   const res = await realFetch(url, {
     method: "POST",
     headers: {
