@@ -1,5 +1,4 @@
 import { runCore } from "../../core.ts";
-import { mockFetcherStream } from "../helpers/mock_fetchers.ts";
 
 Deno.test("runCore streaming path uses provider chatCompletionStream", async () => {
   const res = await runCore(

@@ -1,5 +1,6 @@
 import { assertStringIncludes } from "https://deno.land/std@0.203.0/testing/asserts.ts";
 import { chatCompletion } from "../../src/providers/openai.ts";
+import { MOCK_SERVER_URL } from "../../src/config.ts";
 
 Deno.test("provider chatCompletion hits mock-openai and returns markdown (with server)", async () => {
   // Try to start the mock server via the relocated module. If permissions
@@ -26,7 +27,7 @@ Deno.test("provider chatCompletion hits mock-openai and returns markdown (with s
     const content = await chatCompletion({
       model: "gpt-3.5-mock",
       messages: [{ role: "user", content: "Hello" }],
-    }, "http://127.0.0.1:8086");
+    }, MOCK_SERVER_URL);
 
     assertStringIncludes(content, "Advertisement");
   } finally {

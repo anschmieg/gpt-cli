@@ -1,4 +1,5 @@
 import type { ChatRequest, Fetcher } from "./types.ts";
+import { MOCK_SERVER_URL } from "../config.ts";
 import { ensureResponseOk } from "../utils/adapter_utils.ts";
 import { parseSSEStream } from "../utils/sse_parser.ts";
 
@@ -74,12 +75,12 @@ async function postAndEnsure(
 // --- Higher-level helpers (previously in this file) ---
 export async function requestNonStreaming(
   req: ChatRequest,
-  baseUrlOrOptions: string | Opts = { baseUrl: "http://127.0.0.1:8086" },
+  baseUrlOrOptions: string | Opts = { baseUrl: MOCK_SERVER_URL },
 ): Promise<string> {
   const opts: Opts = typeof baseUrlOrOptions === "string"
     ? { baseUrl: baseUrlOrOptions }
     : baseUrlOrOptions || {};
-  const baseUrl = opts.baseUrl ?? "http://127.0.0.1:8086";
+  const baseUrl = opts.baseUrl ?? MOCK_SERVER_URL;
   const fetcher: Fetcher = opts.fetcher ??
     ((input, init) => fetch(input, init));
   const apiKey = opts.apiKey ?? "";
@@ -90,12 +91,12 @@ export async function requestNonStreaming(
 
 export function requestStreaming(
   req: ChatRequest,
-  baseUrlOrOptions: string | Opts = { baseUrl: "http://127.0.0.1:8086" },
+  baseUrlOrOptions: string | Opts = { baseUrl: MOCK_SERVER_URL },
 ): Promise<AsyncGenerator<string, void, unknown>> {
   const opts: Opts = typeof baseUrlOrOptions === "string"
     ? { baseUrl: baseUrlOrOptions }
     : baseUrlOrOptions || {};
-  const baseUrl = opts.baseUrl ?? "http://127.0.0.1:8086";
+  const baseUrl = opts.baseUrl ?? MOCK_SERVER_URL;
   const fetcher: Fetcher = opts.fetcher ??
     ((input, init) => fetch(input, init));
   const apiKey = opts.apiKey ?? "";

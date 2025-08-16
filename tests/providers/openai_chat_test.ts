@@ -1,4 +1,5 @@
 import { chatCompletion } from "../../src/providers/openai.ts";
+import { MOCK_SERVER_URL } from "../../src/config.ts";
 
 Deno.test("openai.chatCompletion returns content from fetcher", async () => {
   const fetcher = (_url: string, _init?: RequestInit) =>
@@ -11,6 +12,6 @@ Deno.test("openai.chatCompletion returns content from fetcher", async () => {
   const res = await chatCompletion({
     model: "m",
     messages: [{ role: "user", content: "hi" }],
-  }, { baseUrl: "http://127.0.0.1:8086", fetcher });
+  }, { baseUrl: MOCK_SERVER_URL, fetcher });
   if (res !== "hello") throw new Error("expected hello");
 });

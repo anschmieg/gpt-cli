@@ -1,6 +1,6 @@
 import { log } from "./src/utils/log.ts";
 import { renderMarkdown } from "./src/utils/markdown.ts";
-import { DEFAULTS } from "./src/config.ts";
+import { DEFAULTS, MOCK_SERVER_URL } from "./src/config.ts";
 
 export interface CoreConfig {
   provider?: string;
@@ -84,9 +84,7 @@ export async function runCore(
         }
         // Call provider streaming API and print chunks as they arrive.
         const baseUrl = providerOpts?.baseUrl ??
-          (Deno.env.get("GPT_CLI_TEST") === "1"
-            ? "http://127.0.0.1:8086"
-            : undefined);
+          (Deno.env.get("GPT_CLI_TEST") === "1" ? MOCK_SERVER_URL : undefined);
         const opts = { ...providerOpts, baseUrl } as
           | ProviderOptions
           | undefined;

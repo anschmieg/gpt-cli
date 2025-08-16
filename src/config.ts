@@ -7,4 +7,5 @@ export const DEFAULTS = {
   markdown: true,
 } as const;
 
-export const DEFAULT_MODEL = DEFAULTS.model;
+// Local mock server used by integration tests
+export const MOCK_SERVER_URL = "http://127.0.0.1:8086";

@@ -12,8 +12,8 @@ action items are tracked with checkboxes for quick reference and status.
       prints output; returns structured results (CLI handles exit).
 - [x] Adapters (`adapters/*.ts`) — runtime adapter entrypoints for
       OpenAI-compatible APIs.
-- [x] Mock server (`tests/mock-server-openai/mock-server.ts`) — local mock OpenAI-compatible
-      server for integration tests.
+- [x] Mock server (`tests/mock-server-openai/mock-server.ts`) — local mock
+      OpenAI-compatible server for integration tests.
 - [~] Utils (`utils/*.ts`) — logging, markdown rendering, helpers. _(Partial;
   logging is now permission-safe.)_
 

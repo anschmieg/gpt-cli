@@ -1,5 +1,6 @@
 import { runCore } from "../../core.ts";
 import { mockFetcher } from "../helpers/mock_fetchers.ts";
+import { MOCK_SERVER_URL } from "../../src/config.ts";
 
 Deno.test("runCore falls back when stream requested but adapter lacks streaming", async () => {
   // Use the factory-backed openai adapter but provide a fetcher that returns
@@ -11,7 +12,7 @@ Deno.test("runCore falls back when stream requested but adapter lacks streaming"
     undefined,
     undefined,
     {
-      baseUrl: "http://127.0.0.1:8086",
+      baseUrl: MOCK_SERVER_URL,
       apiKey: "DUMMY",
       fetcher: mockFetcher({ choices: [{ message: { content: "ok" } }] }),
     },

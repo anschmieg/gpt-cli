@@ -1,4 +1,5 @@
 import { assertStringIncludes } from "https://deno.land/std@0.203.0/testing/asserts.ts";
+import { MOCK_SERVER_URL } from "../../src/config.ts";
 
 Deno.test("end-to-end streaming from mock server (process)", async () => {
   let server: { close: () => Promise<unknown> | void } | undefined;
@@ -24,7 +25,7 @@ Deno.test("end-to-end streaming from mock server (process)", async () => {
       model: "gpt-3.5-mock",
       messages: [{ role: "user", content: "Hello" }],
       stream: true,
-    }, { baseUrl: "http://127.0.0.1:8086", apiKey: "test" });
+    }, { baseUrl: MOCK_SERVER_URL, apiKey: "test" });
 
     let out = "";
     for await (const chunk of gen) {

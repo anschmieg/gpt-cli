@@ -1,6 +1,6 @@
 import type { ProviderOptions } from "../src/providers/types.ts";
 
-export async function callProvider(_config: unknown, opts?: ProviderOptions) {
+export function callProvider(_config: unknown, opts?: ProviderOptions) {
   if (!opts?.apiKey) throw new Error("TEST_ADAPTER_API_KEY required");
   return { text: "chunk-1chunk-2" };
 }

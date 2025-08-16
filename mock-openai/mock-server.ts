@@ -2,7 +2,13 @@
 /// <reference lib="deno.ns" />
 /// <reference lib="dom" />
 
-const port = 8086;
+import { MOCK_SERVER_URL } from "../src/config.ts";
+
+// Derive host and port from MOCK_SERVER_URL (expected form http://host:port)
+const parsed = new URL(MOCK_SERVER_URL);
+const port = Number(parsed.port) || 8086;
+const hostname = parsed.hostname || "127.0.0.1";
+const baseUrl = `${parsed.protocol}//${parsed.hostname}:${port}`;
 
 const customResponseText = `
 __Advertisement :)__
@@ -130,7 +136,11 @@ export async function startMockServerProcess(): Promise<{ close: () => void }> {
     const runPerm = await Deno.permissions.query({ name: "run" });
     if (runPerm.state === "granted") {
       const command = new Deno.Command(Deno.execPath(), {
-        args: ["run", "--allow-net=127.0.0.1:8086", import.meta.url],
+        args: [
+          "run",
+          `--allow-net=${parsed.hostname}:${port}`,
+          import.meta.url,
+        ],
         stdout: "piped",
         stderr: "piped",
       });
@@ -140,7 +150,7 @@ export async function startMockServerProcess(): Promise<{ close: () => void }> {
       const start = Date.now();
       while (Date.now() - start < 2000) {
         try {
-          const res = await fetch("http://127.0.0.1:8086/health");
+          const res = await fetch(`${baseUrl}/health`);
           try {
             await res.text();
           } catch {
@@ -231,7 +241,7 @@ export async function startMockServerProcess(): Promise<{ close: () => void }> {
   try {
     const netPerm = await Deno.permissions.query({
       name: "net",
-      host: "127.0.0.1:8086",
+      host: `${parsed.hostname}:${port}`,
     });
     if (netPerm.state === "granted") {
       const controller = new AbortController();
@@ -245,7 +255,7 @@ export async function startMockServerProcess(): Promise<{ close: () => void }> {
       const start = Date.now();
       while (Date.now() - start < 2000) {
         try {
-          const res = await fetch("http://127.0.0.1:8086/health");
+          const res = await fetch(`${baseUrl}/health`);
           if (res.ok) break;
         } catch {
           // not up yet
@@ -269,15 +279,14 @@ export async function startMockServerProcess(): Promise<{ close: () => void }> {
   }
 
   throw new Error(
-    "startMockServerProcess requires --allow-run or --allow-net=127.0.0.1:8086 to start the mock server",
+    `startMockServerProcess requires --allow-run or --allow-net=${parsed.hostname}:${port} to start the mock server`,
   );
 }
-
-console.log(`Mock OpenAI API server module loaded at http://127.0.0.1:${port}`);
+console.log(`Mock OpenAI API server module loaded at ${baseUrl}`);
 // If executed directly, start the server in-process.
 if (import.meta.main) {
-  console.log(`Mock OpenAI API server listening at http://127.0.0.1:${port}`);
+  console.log(`Mock OpenAI API server listening at ${baseUrl}`);
   // Use the built-in Deno.serve to avoid deprecated std APIs.
   // Deno.serve will block the process and handle incoming requests.
-  Deno.serve({ hostname: "127.0.0.1", port }, handler);
+  Deno.serve({ hostname, port }, handler);
 }
