@@ -62,10 +62,15 @@ Examples:
 
 User request: ` + prompt
 
-	// Create a temporary config with the shell-specific system prompt
-	shellConfig := *s.config
-	shellConfig.System = systemPrompt
-	shellConfig.Temperature = 0.1 // Lower temperature for more consistent output
+	// Create a modified provider call with shell-specific system prompt
+	originalSystem := s.config.System
+	s.config.System = systemPrompt
+	s.config.Temperature = 0.1 // Lower temperature for more consistent output
+	
+	// Restore original config after call
+	defer func() {
+		s.config.System = originalSystem
+	}()
 
 	response, err := s.provider.CallProvider(prompt)
 	if err != nil {

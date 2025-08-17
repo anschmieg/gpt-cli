@@ -1,0 +1,22 @@
+{
+  "provider": "openai",
+  "model": "gpt-4o-mini",
+  "temperature": 0.7,
+  "verbose": false,
+  "markdown": true,
+  "system": "You are a helpful AI assistant. Provide clear, concise, and accurate responses.",
+  "providers": {
+    "openai": {
+      "api_key": "${OPENAI_API_KEY}",
+      "base_url": "https://api.openai.com"
+    },
+    "copilot": {
+      "api_key": "${COPILOT_API_KEY}",
+      "base_url": "${COPILOT_API_BASE}"
+    },
+    "gemini": {
+      "api_key": "${GEMINI_API_KEY}",
+      "base_url": "https://generativelanguage.googleapis.com/v1beta/openai"
+    }
+  }
+}

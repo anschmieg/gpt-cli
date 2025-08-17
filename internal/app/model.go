@@ -266,3 +266,8 @@ type ErrorMsg struct {
 type StreamChunkMsg struct {
 	Chunk string
 }
+
+// State returns the current state (for testing)
+func (m *Model) State() AppState {
+	return m.state
+}

@@ -6,7 +6,9 @@ import (
 	"strconv"
 
 	"github.com/spf13/cobra"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/anschmieg/gpt-cli/internal/config"
+	"github.com/anschmieg/gpt-cli/internal/modes"
 	"github.com/anschmieg/gpt-cli/internal/providers"
 	"github.com/anschmieg/gpt-cli/internal/ui"
 	"github.com/anschmieg/gpt-cli/internal/utils"
@@ -20,6 +22,8 @@ var (
 	markdown    bool
 	system      string
 	stream      bool
+	shellMode   bool
+	chatMode    bool
 )
 
 var rootCmd = &cobra.Command{
@@ -38,6 +42,8 @@ func init() {
 	rootCmd.Flags().BoolVar(&markdown, "markdown", true, "Enable markdown rendering")
 	rootCmd.Flags().StringVar(&system, "system", "", "System prompt")
 	rootCmd.Flags().BoolVar(&stream, "stream", false, "Enable streaming responses")
+	rootCmd.Flags().BoolVar(&shellMode, "shell", false, "Shell suggestion mode - suggest bash commands with safety ratings")
+	rootCmd.Flags().BoolVar(&chatMode, "chat", false, "Chat mode - interactive TUI with conversation memory")
 }
 
 func runCLI(cmd *cobra.Command, args []string) {
@@ -93,17 +99,45 @@ func runCLI(cmd *cobra.Command, args []string) {
 	// Create logger
 	logger := utils.NewLogger(cfg.Verbose)
 
+	// Check for conflicting modes
+	if shellMode && chatMode {
+		fmt.Fprintf(os.Stderr, "Error: Cannot use both --shell and --chat modes simultaneously\n")
+		os.Exit(1)
+	}
+
 	// If prompt provided as arguments, run in non-interactive mode
 	if len(args) > 0 {
 		prompt := joinArgs(args)
-		runNonInteractive(cfg, prompt, logger)
+		
+		// Handle different modes
+		if shellMode {
+			runShellMode(cfg, prompt, logger)
+		} else if chatMode {
+			fmt.Fprintf(os.Stderr, "Error: Chat mode requires interactive TUI. Remove arguments to use chat mode.\n")
+			os.Exit(1)
+		} else {
+			runNonInteractive(cfg, prompt, logger)
+		}
 		return
 	}
 
-	// Print help and exit if no arguments provided
+	// No arguments provided - determine mode
+	if shellMode {
+		fmt.Fprintf(os.Stderr, "Error: Shell mode requires a prompt argument\n")
+		fmt.Fprintf(os.Stderr, "Usage: gpt-cli --shell \"your request for a shell command\"\n")
+		os.Exit(1)
+	} else if chatMode {
+		runChatMode(cfg, logger)
+		return
+	}
+
+	// Print help and exit if no arguments provided and no mode specified
 	fmt.Println("No prompt provided. Use --help for usage information.")
-	fmt.Println("For interactive mode, run the main application:")
-	fmt.Println("  go run main.go")
+	fmt.Println("Available modes:")
+	fmt.Println("  gpt-cli \"your prompt\"        - Simple inline mode") 
+	fmt.Println("  gpt-cli --shell \"your task\"  - Shell command suggestions")
+	fmt.Println("  gpt-cli --chat               - Interactive chat with memory")
+	fmt.Println("  go run main.go               - Original TUI mode")
 	os.Exit(1)
 }
 
@@ -147,6 +181,43 @@ func runNonInteractive(cfg *config.Config, prompt string, logger *utils.Logger) 
 		} else {
 			fmt.Println(response)
 		}
+	}
+}
+
+func runShellMode(cfg *config.Config, prompt string, logger *utils.Logger) {
+	provider := providers.NewProvider(cfg.Provider, cfg)
+	ui := ui.New()
+	
+	logger.Debugf("Using provider: %s", cfg.Provider)
+	logger.Debugf("Using model: %s", cfg.Model)
+	logger.Debugf("Shell mode prompt: %s", prompt)
+
+	shellMode := modes.NewShellMode(cfg, provider, ui)
+	
+	err := shellMode.InteractiveMode(prompt)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error in shell mode: %v\n", err)
+		os.Exit(1)
+	}
+}
+
+func runChatMode(cfg *config.Config, logger *utils.Logger) {
+	provider := providers.NewProvider(cfg.Provider, cfg)
+	ui := ui.New()
+	
+	logger.Debugf("Using provider: %s", cfg.Provider)
+	logger.Debugf("Using model: %s", cfg.Model)
+	logger.Debugf("Starting chat mode")
+
+	chatMode := modes.NewChatMode(cfg, provider, ui)
+	model := modes.NewChatModel(chatMode)
+	
+	// Create the BubbleTea program
+	p := tea.NewProgram(model, tea.WithAltScreen())
+	
+	if _, err := p.Run(); err != nil {
+		fmt.Fprintf(os.Stderr, "Error running chat mode: %v\n", err)
+		os.Exit(1)
 	}
 }
 
