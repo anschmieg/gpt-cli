@@ -82,7 +82,7 @@ func NewConfig() *Config {
 // loadConfigFile attempts to load configuration from file
 func loadConfigFile() (*FileConfig, error) {
 	configDir := getConfigDir()
-	
+
 	// Try YAML first, then JSON
 	for _, ext := range []string{"yml", "yaml", "json"} {
 		configPath := filepath.Join(configDir, "gpt-cli", "config."+ext)
@@ -90,7 +90,7 @@ func loadConfigFile() (*FileConfig, error) {
 			return config, nil
 		}
 	}
-	
+
 	return nil, fmt.Errorf("no config file found")
 }
 
@@ -102,7 +102,7 @@ func loadConfigFromPath(path string) (*FileConfig, error) {
 	}
 
 	var config FileConfig
-	
+
 	// Determine format by extension
 	ext := filepath.Ext(path)
 	switch ext {
@@ -113,12 +113,26 @@ func loadConfigFromPath(path string) (*FileConfig, error) {
 	default:
 		return nil, fmt.Errorf("unsupported config file format: %s", ext)
 	}
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse config file %s: %w", path, err)
 	}
-	
+
+	expandEnvFileConfig(&config)
 	return &config, nil
+}
+
+// expandEnvFileConfig replaces ${VAR} style expressions with env values
+func expandEnvFileConfig(cfg *FileConfig) {
+	cfg.Provider = os.ExpandEnv(cfg.Provider)
+	cfg.Model = os.ExpandEnv(cfg.Model)
+	cfg.System = os.ExpandEnv(cfg.System)
+	cfg.Providers.OpenAI.APIKey = os.ExpandEnv(cfg.Providers.OpenAI.APIKey)
+	cfg.Providers.OpenAI.BaseURL = os.ExpandEnv(cfg.Providers.OpenAI.BaseURL)
+	cfg.Providers.Copilot.APIKey = os.ExpandEnv(cfg.Providers.Copilot.APIKey)
+	cfg.Providers.Copilot.BaseURL = os.ExpandEnv(cfg.Providers.Copilot.BaseURL)
+	cfg.Providers.Gemini.APIKey = os.ExpandEnv(cfg.Providers.Gemini.APIKey)
+	cfg.Providers.Gemini.BaseURL = os.ExpandEnv(cfg.Providers.Gemini.BaseURL)
 }
 
 // mergeFileConfig merges file configuration into the main config
