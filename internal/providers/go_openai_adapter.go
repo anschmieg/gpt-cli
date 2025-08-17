@@ -72,3 +72,25 @@ func (a *GoOpenAIAdapter) Stream(prompt string) (io.ReadCloser, error) {
 
 	return pr, nil
 }
+
+// Complete performs a single-shot chat completion using the SDK client and
+// returns the assistant content. This makes the adapter usable in
+// non-streaming mode when callers prefer a synchronous response.
+func (a *GoOpenAIAdapter) Complete(prompt string) (string, error) {
+	if a == nil || a.client == nil {
+		return "", fmt.Errorf("adapter not initialized")
+	}
+	req := openai.ChatCompletionRequest{
+		Model:    a.model,
+		Messages: []openai.ChatCompletionMessage{{Role: "user", Content: prompt}},
+		Stream:   false,
+	}
+	resp, err := a.client.CreateChatCompletion(a.ctx, req)
+	if err != nil {
+		return "", err
+	}
+	if len(resp.Choices) == 0 {
+		return "", nil
+	}
+	return resp.Choices[0].Message.Content, nil
+}

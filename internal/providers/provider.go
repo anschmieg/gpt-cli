@@ -14,6 +14,12 @@ type StreamReader interface {
 	Stream(prompt string) (io.ReadCloser, error)
 }
 
+// SyncCompleter is an optional interface adapters may implement to perform
+// a non-streaming completion (single response) and return the full text.
+type SyncCompleter interface {
+	Complete(prompt string) (string, error)
+}
+
 // AdapterType indicates which underlying client to use.
 type AdapterType string
 

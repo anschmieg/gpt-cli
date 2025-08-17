@@ -74,7 +74,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 	if !req.Stream {
 		// build a simple non-streaming response
 		type choice struct {
-			Index int `json:"index"`
+			Index   int `json:"index"`
 			Message struct {
 				Role    string `json:"role"`
 				Content string `json:"content"`

@@ -1,71 +1,55 @@
-# TODO: Implement CI workflow for Go implementation
-
-# name: CI
-
-# on:
-# 	push: {}
-# 	pull_request: {}
-
-# jobs:
-# 	test:
-# 		name: Unit tests
-# 		runs-on: ubuntu-latest
-# 		steps:
-# 			- name: Checkout
-# 				uses: actions/checkout@v4
-
-# 			- name: Set up Go
-# 				uses: actions/setup-go@v4
-# 				with:
-# 					go-version: '1.21'
-
-# 			- name: Cache Go modules
-# 				uses: actions/cache@v4
-# 				with:
-# 					path: |
-# 						~/.cache/go-build
-# 						~/go/pkg/mod
-# 					key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-# 					restore-keys: |
 name: CI
 
 on:
-	push:
-		branches: [ main, refactor/** ]
-	pull_request:
-		branches: [ main ]
+  push:
+    branches:
+      - main
+      - "refactor/**"
+  pull_request:
+    branches:
+      - main
 
 jobs:
-	test:
-		runs-on: ubuntu-latest
-		steps:
-			- uses: actions/checkout@v4
-			- name: Set up Go
-				uses: actions/setup-go@v4
-				with:
-					go-version: '1.21'
-			- name: Install deps
-				run: go mod download
-			- name: Unit tests
-				run: go test ./... -v
+  unit:
+    name: Unit tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.21"
+      - name: Cache Go modules
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/go-build
+            ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+      - name: Install deps
+        run: go mod download
+      - name: Unit tests
+        run: go test ./... -v
 
-	integration:
-		runs-on: ubuntu-latest
-		needs: test
-		steps:
-			- uses: actions/checkout@v4
-			- name: Set up Go
-				uses: actions/setup-go@v4
-				with:
-					go-version: '1.21'
-			- name: Install deps
-				run: go mod download
-			- name: Start mock server
-				run: |
-					nohup go run ./mock-openai -addr :8080 > mock.log 2>&1 &
-					sleep 1
-			- name: Run integration tests
-				env:
-					MOCK_SERVER_URL: http://localhost:8080
-				run: go test ./... -run Integration -v
-
+  integration:
+    name: Integration tests
+    runs-on: ubuntu-latest
+    needs: unit
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.21"
+      - name: Install deps
+        run: go mod download
+      - name: Start mock server
+        run: |
+          nohup go run ./mock-openai -addr :8080 > mock.log 2>&1 &
+          sleep 1
+      - name: Run integration tests
+        env:
+          MOCK_SERVER_URL: http://localhost:8080
+        run: go test ./... -run Integration -v

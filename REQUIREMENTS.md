@@ -19,6 +19,7 @@ Plan: produce a single, comprehensive requirements spec covering functional beha
 - Single binary using Bubble Tea for all interactive behavior. Must also support non-interactive runs and stdin/stdout usage.
 - Modes:
   - Non-interactive (default): run a single prompt, print rendered output to stdout (ANSI if TTY, plain text if piped). Support `--stream` to show progressive output when provider streams.
+    - Non-interactive (default): run a single prompt, print rendered output to stdout (ANSI if TTY, plain text if piped). Support `--stream` to show progressive output when provider streams. A minimal non-interactive streaming CLI is implemented (see `main.go`) which wires `internal/providers` → `internal/core.RunStreaming` → renderer. This provides an end-to-end smoke path before a full TUI is added.
   - Interactive chat (TUI): multi-turn chat UI with prompt input, message history, streaming rendering, model selection, system prompt editing, and settings panel.
   - Semi-interactive suggest (TUI): request suggestions from the model, parse suggestion JSON contract, show candidate command(s) and present UI choices: Execute, Edit (inline text input), Refine (send new prompt), Abort. Executing must require explicit confirm.
   - stdin mode: read prompt from stdin when no prompt arg or when `-` used, and behave non-interactively (support streaming).
@@ -26,12 +27,17 @@ Plan: produce a single, comprehensive requirements spec covering functional beha
   - Adapters for OpenAI-compatible, GitHub Copilot, Google Gemini.
   - Use `MOCK_SERVER_URL` and `GPT_CLI_TEST` for integration tests.
   - Build provider options from env vars (OPENAI_API_KEY, COPILOT_API_KEY, GEMINI_API_KEY, bases).
+  - Provider plumbing:
+    - Adapters for OpenAI-compatible backends are implemented: a plain HTTP adapter and an SDK-backed adapter (sashabaranov/go-openai). Additional adapters (Copilot, Gemini) are planned.
+    - Use `MOCK_SERVER_URL` and `GPT_CLI_TEST` for integration tests.
+    - Build provider options from env vars (OPENAI_API_KEY, COPILOT_API_KEY, GEMINI_API_KEY, bases).
 - Output & rendering:
   - Markdown rendering to ANSI in TTY. Use incremental rendering for streaming. If stdout is not TTY, output plain text or JSON as appropriate.
   - For suggestion mode, emit a JSON suggestion object when requested (scriptable mode), and present the richer UI when interactive.
 - CLI flags / UI entry points:
   - Flags for provider, model, temperature, system, file upload, stream, suggest, interactive, verbose, markdown on/off, retry-model, help.
   - `tui` or `interactive` subcommand to start full TUI explicitly.
+    - `tui` or `interactive` subcommand to start full TUI explicitly (TUI not implemented yet).
 - Error handling:
   - Clear user-facing errors for network/provider issues.
   - Retry logic for unsupported model when `--retry-model` enabled.
@@ -93,6 +99,7 @@ Plan: produce a single, comprehensive requirements spec covering functional beha
   - Markdown renderer render correctness for typical tokens.
 - Integration tests using existing mock server:
   - Streaming integration: mock server sends chunk sequences that include partial tokens; assert TUI/model behavior or output correctness.
+    - Streaming integration: mock server sends chunk sequences that include partial tokens; assert CLI/TUI behavior or output correctness. Integration tests and httptest helpers exist and are used by CI.
   - Suggestion flow: mock server returns suggestion payload; verify TUI actions behave or simulate user input.
 - CI:
   - Unit job (go test ./...).
