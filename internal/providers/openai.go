@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"strings"
 
-	"bubbletea-app/internal/config"
+	"github.com/anschmieg/gpt-cli/internal/config"
 )
 
 // OpenAIProvider implements the Provider interface for OpenAI

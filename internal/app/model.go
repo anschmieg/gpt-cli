@@ -6,9 +6,9 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"bubbletea-app/internal/config"
-	"bubbletea-app/internal/providers"
-	"bubbletea-app/internal/ui"
+	"github.com/anschmieg/gpt-cli/internal/config"
+	"github.com/anschmieg/gpt-cli/internal/providers"
+	"github.com/anschmieg/gpt-cli/internal/ui"
 )
 
 // Model represents the main application state

@@ -6,10 +6,10 @@ import (
 	"strconv"
 
 	"github.com/spf13/cobra"
-	"bubbletea-app/internal/config"
-	"bubbletea-app/internal/providers"
-	"bubbletea-app/internal/ui"
-	"bubbletea-app/internal/utils"
+	"github.com/anschmieg/gpt-cli/internal/config"
+	"github.com/anschmieg/gpt-cli/internal/providers"
+	"github.com/anschmieg/gpt-cli/internal/ui"
+	"github.com/anschmieg/gpt-cli/internal/utils"
 )
 
 var (

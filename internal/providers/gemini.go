@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"strings"
 
-	"bubbletea-app/internal/config"
+	"github.com/anschmieg/gpt-cli/internal/config"
 )
 
 // GeminiProvider implements the Provider interface for Google Gemini
