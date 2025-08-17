@@ -1,119 +1,82 @@
-name: CI
+# TODO: Implement CI workflow for Go implementation
 
-on:
-  push: {}
-  pull_request: {}
-  release:
-    types: [published]
+# name: CI
 
-jobs:
-  unit:
-    name: Unit tests
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+# on:
+# 	push: {}
+# 	pull_request: {}
 
-      - name: Setup Deno
-        uses: denoland/setup-deno@v1
-        with:
-          deno-version: "latest"
+# jobs:
+# 	test:
+# 		name: Unit tests
+# 		runs-on: ubuntu-latest
+# 		steps:
+# 			- name: Checkout
+# 				uses: actions/checkout@v4
 
-      - name: Cache Deno deps
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/deno
-          key: ${{ runner.os }}-deno-${{ hashFiles('**/deno.json') }}
-          restore-keys: |
-            ${{ runner.os }}-deno-
+# 			- name: Set up Go
+# 				uses: actions/setup-go@v4
+# 				with:
+# 					go-version: '1.21'
 
-      - name: Warm Deno cache
-        run: |
-          deno cache ./src/providers/openai.ts ./src/providers/api_openai_compatible.ts
+# 			- name: Cache Go modules
+# 				uses: actions/cache@v4
+# 				with:
+# 					path: |
+# 						~/.cache/go-build
+# 						~/go/pkg/mod
+# 					key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+# 					restore-keys: |
+# 						${{ runner.os }}-go-
 
-      - name: Run deno lint
-        run: deno lint
+# 			- name: Run go vet
+# 				run: go vet ./...
 
-      - name: Check formatting
-        run: deno fmt --check
+# 			- name: Run unit tests
+# 				run: go test ./... -v
 
-      - name: Run unit tests (no network)
-        run: |
-          deno test \
-            tests/cli \
-            tests/providers \
-            tests/config_test.ts \
-            tests/core_test.ts \
-            tests/utils_test.ts \
-            --allow-read \
-            --allow-env
+# 	build:
+# 		name: Build
+# 		runs-on: ubuntu-latest
+# 		needs: test
+# 		steps:
+# 			- name: Checkout
+# 				uses: actions/checkout@v4
 
-  integration:
-    name: Integration tests (mock server)
-    runs-on: ubuntu-latest
-    # Run integration on pull requests, tags, and pushes to main
-    # NOTE: Integration tests spawn the local mock server and therefore require
-    # limited run/net/read/env permissions. We run these on PRs and pushes to
-    # `main` (and tags) so integration regressions are caught early without
-    # running them on every single push to long-lived branches.
-    if: github.event_name == 'pull_request' || startsWith(github.ref, 'refs/tags/') || github.ref == 'refs/heads/main'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+# 			- name: Set up Go
+# 				uses: actions/setup-go@v4
+# 				with:
+# 					go-version: '1.21'
 
-      - name: Setup Deno
-        uses: denoland/setup-deno@v1
-        with:
-          deno-version: "latest"
+# 			- name: Build binary
+# 				run: go build -o gpt-cli .
 
-      - name: Cache Deno deps
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.cache/deno
-          key: ${{ runner.os }}-deno-${{ hashFiles('**/deno.json') }}
-          restore-keys: |
-            ${{ runner.os }}-deno-
+# 	coverage:
+# 		name: Coverage
+# 		runs-on: ubuntu-latest
+# 		needs: test
+# 		steps:
+# 			- name: Checkout
+# 				uses: actions/checkout@v4
 
-      - name: Warm Deno cache
-        run: deno cache ./src/providers/openai.ts ./src/providers/api_openai_compatible.ts
+# 			- name: Set up Go
+# 				uses: actions/setup-go@v4
+# 				with:
+# 					go-version: '1.21'
 
-      - name: Run integration test (spawns mock server)
-        env:
-          GPT_CLI_TEST: "1"
-          MOCK_SERVER_URL: "http://127.0.0.1:8086"
-        run: |
-          deno test tests/integration --allow-run --allow-net=127.0.0.1:8086 --allow-env --allow-read
+# 			- name: Run tests with coverage
+# 				run: |
+# 					mkdir -p coverage
+# 					go test ./... -coverprofile=coverage/coverage.out
 
-  coverage:
-    name: Coverage (lcov)
-    runs-on: ubuntu-latest
-    needs: integration
-    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'release'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+# 			- name: Convert coverage to lcov (optional)
+# 				run: |
+# 					if command -v gocovconverter >/dev/null 2>&1; then
+# 						gocovconverter -in coverage/coverage.out -out coverage/lcov.info || true
+# 					fi
 
-      - name: Setup Deno
-        uses: denoland/setup-deno@v1
-        with:
-          deno-version: "latest"
-
-      - name: Run tests with coverage (exclude integration)
-        env:
-          GPT_CLI_TEST: "1"
-          MOCK_SERVER_URL: "http://127.0.0.1:8086"
-        run: | # Collect all test .ts files except those under tests/integration
-          files=( $(grep -RIl --include='*.ts' '.' tests | grep -v '^tests/integration/' ) )
-          deno test --coverage=coverage "${files[@]}" --allow-run --allow-net=127.0.0.1:8086 --allow-env --allow-read --allow-write
-
-      - name: Generate lcov
-        run: |
-          deno coverage --lcov coverage > coverage/lcov.info
-
-      - name: Upload lcov artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-lcov
-          path: coverage/lcov.info
+# 			- name: Upload coverage artifact
+# 				uses: actions/upload-artifact@v4
+# 				with:
+# 					name: coverage
+# 					path: coverage

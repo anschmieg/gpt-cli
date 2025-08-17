@@ -1,6 +1,0 @@
-# Default configuration for gpt-cli (YAML)
-provider: copilot
-model: gpt-4o-mini
-temperature: 0.6
-verbose: false
-markdown: true
