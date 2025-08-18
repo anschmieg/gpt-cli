@@ -6,12 +6,13 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
+	"strconv"
 	"strings"
 
-	"github.com/charmbracelet/lipgloss"
 	"github.com/anschmieg/gpt-cli/internal/config"
 	"github.com/anschmieg/gpt-cli/internal/providers"
 	"github.com/anschmieg/gpt-cli/internal/ui"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // ShellSuggestion represents a shell command suggestion with safety information
@@ -66,7 +67,7 @@ User request: ` + prompt
 	originalSystem := s.config.System
 	s.config.System = systemPrompt
 	s.config.Temperature = 0.1 // Lower temperature for more consistent output
-	
+
 	// Restore original config after call
 	defer func() {
 		s.config.System = originalSystem
@@ -85,11 +86,125 @@ User request: ` + prompt
 	return suggestion, nil
 }
 
+// StreamSuggestion streams a shell command suggestion and updates display incrementally
+func (s *ShellMode) StreamSuggestion(prompt string) (*ShellSuggestion, error) {
+	systemPrompt := `You are a shell command assistant. Given a user request, suggest a bash/shell command that accomplishes their goal.
+
+IMPORTANT: You must respond with ONLY a valid JSON object in this exact format:
+{
+  "command": "the actual shell command",
+  "safety_level": "safe|moderate|dangerous",
+  "explanation": "brief explanation of what the command does",
+  "reasoning": "explanation of why this safety level was assigned"
+}
+
+Safety level guidelines:
+- "safe": Commands that only read data, display information, or perform non-destructive operations
+- "moderate": Commands that modify files/directories in controlled ways, install packages, or change configuration
+- "dangerous": Commands that can delete data, modify system files, change permissions, or affect system security
+
+Examples:
+- "ls -la" = safe (only lists files)
+- "mkdir project" = moderate (creates directory)
+- "rm -rf /" = dangerous (deletes everything)
+
+User request: ` + prompt
+
+	originalSystem := s.config.System
+	s.config.System = systemPrompt
+	s.config.Temperature = 0.1
+	defer func() { s.config.System = originalSystem }()
+
+	contentChan, errorChan := s.provider.StreamProvider(prompt)
+
+	var buffer strings.Builder
+	suggestion := &ShellSuggestion{}
+
+	commandRe := regexp.MustCompile(`"command"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"`)
+	safetyRe := regexp.MustCompile(`"safety_level"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"`)
+	explanationRe := regexp.MustCompile(`"explanation"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"`)
+	reasoningRe := regexp.MustCompile(`"reasoning"\s*:\s*"([^"\\]*(?:\\.[^"\\]*)*)"`)
+
+	s.renderSuggestion(suggestion)
+
+	for {
+		select {
+		case chunk, ok := <-contentChan:
+			if !ok {
+				contentChan = nil
+				break
+			}
+			buffer.WriteString(chunk)
+
+			updated := false
+			data := buffer.String()
+			if suggestion.Command == "" {
+				if m := commandRe.FindStringSubmatch(data); len(m) > 1 {
+					if v, err := strconv.Unquote("\"" + m[1] + "\""); err == nil {
+						suggestion.Command = v
+					} else {
+						suggestion.Command = m[1]
+					}
+					updated = true
+				}
+			}
+			if suggestion.SafetyLevel == "" {
+				if m := safetyRe.FindStringSubmatch(data); len(m) > 1 {
+					suggestion.SafetyLevel = m[1]
+					updated = true
+				}
+			}
+			if suggestion.Explanation == "" {
+				if m := explanationRe.FindStringSubmatch(data); len(m) > 1 {
+					if v, err := strconv.Unquote("\"" + m[1] + "\""); err == nil {
+						suggestion.Explanation = v
+					} else {
+						suggestion.Explanation = m[1]
+					}
+					updated = true
+				}
+			}
+			if suggestion.Reasoning == "" {
+				if m := reasoningRe.FindStringSubmatch(data); len(m) > 1 {
+					if v, err := strconv.Unquote("\"" + m[1] + "\""); err == nil {
+						suggestion.Reasoning = v
+					} else {
+						suggestion.Reasoning = m[1]
+					}
+					updated = true
+				}
+			}
+
+			if updated {
+				s.renderSuggestion(suggestion)
+			}
+
+		case err, ok := <-errorChan:
+			if ok && err != nil {
+				return nil, fmt.Errorf("failed to stream command suggestion: %w", err)
+			}
+			errorChan = nil
+		}
+
+		if contentChan == nil && errorChan == nil {
+			break
+		}
+	}
+
+	finalSuggestion, err := s.parseShellSuggestion(buffer.String())
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse command suggestion: %w", err)
+	}
+
+	s.renderSuggestion(finalSuggestion)
+	return finalSuggestion, nil
+}
+
 // parseShellSuggestion parses the LLM response into a ShellSuggestion
 func (s *ShellMode) parseShellSuggestion(response string) (*ShellSuggestion, error) {
 	// Clean the response - remove markdown code blocks if present
 	cleaned := strings.TrimSpace(response)
-	
+
 	// Remove markdown code blocks
 	if strings.HasPrefix(cleaned, "```json") {
 		cleaned = strings.TrimPrefix(cleaned, "```json")
@@ -100,7 +215,7 @@ func (s *ShellMode) parseShellSuggestion(response string) (*ShellSuggestion, err
 	if strings.HasSuffix(cleaned, "```") {
 		cleaned = strings.TrimSuffix(cleaned, "```")
 	}
-	
+
 	// Extract JSON from the response if it's embedded in other text
 	jsonRegex := regexp.MustCompile(`\{[^{}]*(?:\{[^{}]*\}[^{}]*)*\}`)
 	jsonMatch := jsonRegex.Find([]byte(cleaned))
@@ -138,39 +253,95 @@ func (s *ShellMode) parseShellSuggestion(response string) (*ShellSuggestion, err
 	return &suggestion, nil
 }
 
+// renderSuggestion clears the screen and renders the suggestion with headings
+func (s *ShellMode) renderSuggestion(suggestion *ShellSuggestion) {
+	// Clear screen and move cursor to top
+	fmt.Print("\033[2J\033[H")
+
+	fmt.Println(s.ui.TitleStyle.Render("💡 Command Suggestion"))
+	fmt.Println()
+
+	fmt.Println(s.ui.PromptStyle.Render("Command:"))
+	if suggestion.Command != "" {
+		fmt.Println("  " + s.ui.InputStyle.Render(suggestion.Command))
+	} else {
+		fmt.Println()
+	}
+	fmt.Println()
+
+	fmt.Println(s.ui.PromptStyle.Render("Safety Level:"))
+	if suggestion.SafetyLevel != "" {
+		color := s.getSafetyColor(suggestion.SafetyLevel)
+		fmt.Println("  " + color.Render(strings.ToUpper(suggestion.SafetyLevel)))
+	} else {
+		fmt.Println()
+	}
+	fmt.Println()
+
+	fmt.Println(s.ui.PromptStyle.Render("What it does:"))
+	if suggestion.Explanation != "" {
+		text := suggestion.Explanation
+		if s.config.Markdown {
+			text = s.ui.RenderMarkdown(text)
+		}
+		fmt.Println("  " + text)
+	} else {
+		fmt.Println()
+	}
+	fmt.Println()
+
+	fmt.Println(s.ui.PromptStyle.Render("Safety reasoning:"))
+	if suggestion.Reasoning != "" {
+		text := suggestion.Reasoning
+		if s.config.Markdown {
+			text = s.ui.RenderMarkdown(text)
+		}
+		fmt.Println("  " + text)
+	} else {
+		fmt.Println()
+	}
+	fmt.Println()
+}
+
 // InteractiveMode runs the shell suggestion mode interactively
-func (s *ShellMode) InteractiveMode(prompt string) error {
-	// Get command suggestion
-	fmt.Println("🤖 Generating shell command suggestion...")
-	suggestion, err := s.SuggestCommand(prompt)
+func (s *ShellMode) InteractiveMode(prompt string, stream bool) error {
+	var (
+		suggestion *ShellSuggestion
+		err        error
+	)
+
+	if stream {
+		suggestion, err = s.StreamSuggestion(prompt)
+	} else {
+		suggestion, err = s.SuggestCommand(prompt)
+		if err == nil {
+			s.displaySuggestion(suggestion)
+		}
+	}
 	if err != nil {
 		return err
 	}
 
-	// Display the suggestion
-	s.displaySuggestion(suggestion)
-
-	// Prompt user for action
 	return s.promptUserAction(suggestion)
 }
 
 // displaySuggestion displays the command suggestion in a formatted way
 func (s *ShellMode) displaySuggestion(suggestion *ShellSuggestion) {
 	fmt.Println("\n" + s.ui.TitleStyle.Render("💡 Command Suggestion"))
-	
+
 	// Command
 	fmt.Printf("\n%s\n", s.ui.PromptStyle.Render("Command:"))
 	fmt.Printf("  %s\n", s.ui.InputStyle.Render(suggestion.Command))
-	
+
 	// Safety level with color coding
 	fmt.Printf("\n%s\n", s.ui.PromptStyle.Render("Safety Level:"))
 	safetyColor := s.getSafetyColor(suggestion.SafetyLevel)
 	fmt.Printf("  %s\n", safetyColor.Render(strings.ToUpper(suggestion.SafetyLevel)))
-	
+
 	// Explanation
 	fmt.Printf("\n%s\n", s.ui.PromptStyle.Render("What it does:"))
 	fmt.Printf("  %s\n", suggestion.Explanation)
-	
+
 	// Reasoning if provided
 	if suggestion.Reasoning != "" {
 		fmt.Printf("\n%s\n", s.ui.PromptStyle.Render("Safety reasoning:"))
@@ -196,7 +367,7 @@ func (s *ShellMode) getSafetyColor(level string) lipgloss.Style {
 func (s *ShellMode) promptUserAction(suggestion *ShellSuggestion) error {
 	fmt.Printf("\n%s\n", s.ui.PromptStyle.Render("What would you like to do?"))
 	fmt.Println("  [e] Execute immediately")
-	fmt.Println("  [m] Manually edit then execute") 
+	fmt.Println("  [m] Manually edit then execute")
 	fmt.Println("  [r] Refine the suggestion")
 	fmt.Println("  [a] Abort")
 	fmt.Print("\nChoice [e/m/r/a]: ")
@@ -224,12 +395,12 @@ func (s *ShellMode) promptUserAction(suggestion *ShellSuggestion) error {
 // executeCommand executes the command directly
 func (s *ShellMode) executeCommand(command string) error {
 	fmt.Printf("\n%s %s\n", s.ui.LoadingStyle.Render("🚀 Executing:"), command)
-	
+
 	cmd := exec.Command("sh", "-c", command)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
-	
+
 	return cmd.Run()
 }
 
@@ -238,14 +409,14 @@ func (s *ShellMode) editAndExecute(command string) error {
 	fmt.Printf("\n%s\n", s.ui.PromptStyle.Render("Edit the command (or press Enter to use as-is):"))
 	fmt.Printf("Current: %s\n", command)
 	fmt.Print("Edited:  ")
-	
+
 	var editedCommand string
 	fmt.Scanln(&editedCommand)
-	
+
 	if strings.TrimSpace(editedCommand) == "" {
 		editedCommand = command
 	}
-	
+
 	return s.executeCommand(editedCommand)
 }
 
@@ -253,25 +424,25 @@ func (s *ShellMode) editAndExecute(command string) error {
 func (s *ShellMode) refineCommand(suggestion *ShellSuggestion) error {
 	fmt.Printf("\n%s\n", s.ui.PromptStyle.Render("Please provide additional context or corrections:"))
 	fmt.Print("Refinement: ")
-	
+
 	var refinement string
 	fmt.Scanln(&refinement)
-	
+
 	if strings.TrimSpace(refinement) == "" {
 		fmt.Println("No refinement provided. Returning to original suggestion.")
 		return s.promptUserAction(suggestion)
 	}
-	
+
 	// Create a new prompt with the refinement
 	newPrompt := fmt.Sprintf("Original command suggestion: %s\nUser feedback: %s\nPlease provide an improved command suggestion.", suggestion.Command, refinement)
-	
+
 	fmt.Println("\n🤖 Generating refined suggestion...")
 	newSuggestion, err := s.SuggestCommand(newPrompt)
 	if err != nil {
 		fmt.Printf("Error refining command: %v\n", err)
 		return s.promptUserAction(suggestion) // Fallback to original
 	}
-	
+
 	s.displaySuggestion(newSuggestion)
 	return s.promptUserAction(newSuggestion)
 }

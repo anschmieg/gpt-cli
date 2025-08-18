@@ -5,17 +5,17 @@ import (
 	"strings"
 	"time"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/anschmieg/gpt-cli/internal/config"
 	"github.com/anschmieg/gpt-cli/internal/providers"
 	"github.com/anschmieg/gpt-cli/internal/ui"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // Message represents a single message in the conversation
 type Message struct {
-	Role      string    `json:"role"`      // "user", "assistant", "system"
-	Content   string    `json:"content"`   
+	Role      string    `json:"role"` // "user", "assistant", "system"
+	Content   string    `json:"content"`
 	Timestamp time.Time `json:"timestamp"`
 }
 
@@ -37,15 +37,16 @@ type ChatMode struct {
 
 // ChatModel represents the BubbleTea model for chat mode
 type ChatModel struct {
-	chatMode     *ChatMode
-	state        ChatState
-	input        string
-	cursor       int
-	width        int
-	height       int
-	loading      bool
-	error        string
-	scrollOffset int
+	chatMode      *ChatMode
+	state         ChatState
+	input         string
+	cursor        int
+	width         int
+	height        int
+	loading       bool
+	error         string
+	scrollOffset  int
+	initialPrompt string
 }
 
 // ChatState represents the current state of the chat
@@ -85,16 +86,31 @@ func NewChatMode(config *config.Config, provider providers.Provider, ui *ui.UI) 
 }
 
 // NewChatModel creates a new BubbleTea model for chat mode
-func NewChatModel(chatMode *ChatMode) *ChatModel {
+func NewChatModel(chatMode *ChatMode, initial string) *ChatModel {
 	return &ChatModel{
-		chatMode: chatMode,
-		state:    ChatStateInput,
+		chatMode:      chatMode,
+		state:         ChatStateInput,
+		initialPrompt: initial,
 	}
 }
 
 // Init initializes the chat model
 func (m *ChatModel) Init() tea.Cmd {
-	return tea.EnterAltScreen
+	cmds := []tea.Cmd{tea.EnterAltScreen}
+	if strings.TrimSpace(m.initialPrompt) != "" {
+		m.state = ChatStateLoading
+		m.loading = true
+		prompt := strings.TrimSpace(m.initialPrompt)
+		m.initialPrompt = ""
+		m.chatMode.conversation.Messages = append(m.chatMode.conversation.Messages, Message{
+			Role:      "user",
+			Content:   prompt,
+			Timestamp: time.Now(),
+		})
+		m.chatMode.conversation.Updated = time.Now()
+		cmds = append(cmds, m.makeRequest())
+	}
+	return tea.Batch(cmds...)
 }
 
 // Update handles messages and updates the chat model
@@ -111,7 +127,7 @@ func (m *ChatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case ResponseMsg:
 		m.state = ChatStateResponse
 		m.loading = false
-		
+
 		// Add assistant message to conversation
 		m.chatMode.conversation.Messages = append(m.chatMode.conversation.Messages, Message{
 			Role:      "assistant",
@@ -119,7 +135,7 @@ func (m *ChatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			Timestamp: time.Now(),
 		})
 		m.chatMode.conversation.Updated = time.Now()
-		
+
 		return m, nil
 
 	case ErrorMsg:
@@ -227,7 +243,7 @@ func (m *ChatModel) sendMessage() (tea.Model, tea.Cmd) {
 // clearConversation clears the conversation history
 func (m *ChatModel) clearConversation() (tea.Model, tea.Cmd) {
 	m.chatMode.conversation.Messages = []Message{}
-	
+
 	// Re-add system message if configured
 	if m.chatMode.config.System != "" {
 		m.chatMode.conversation.Messages = append(m.chatMode.conversation.Messages, Message{
@@ -236,12 +252,12 @@ func (m *ChatModel) clearConversation() (tea.Model, tea.Cmd) {
 			Timestamp: time.Now(),
 		})
 	}
-	
+
 	m.chatMode.conversation.Updated = time.Now()
 	m.state = ChatStateInput
 	m.error = ""
 	m.scrollOffset = 0
-	
+
 	return m, nil
 }
 
@@ -250,7 +266,7 @@ func (m *ChatModel) makeRequest() tea.Cmd {
 	return func() tea.Msg {
 		// Convert conversation messages to the format expected by the provider
 		prompt := m.formatConversationForProvider()
-		
+
 		response, err := m.chatMode.provider.CallProvider(prompt)
 		if err != nil {
 			return ErrorMsg{Error: err.Error()}
@@ -262,7 +278,7 @@ func (m *ChatModel) makeRequest() tea.Cmd {
 // formatConversationForProvider formats the conversation for the provider
 func (m *ChatModel) formatConversationForProvider() string {
 	var parts []string
-	
+
 	for _, msg := range m.chatMode.conversation.Messages {
 		switch msg.Role {
 		case "system":
@@ -275,7 +291,7 @@ func (m *ChatModel) formatConversationForProvider() string {
 			parts = append(parts, fmt.Sprintf("Assistant: %s", msg.Content))
 		}
 	}
-	
+
 	return strings.Join(parts, "\n\n")
 }
 
@@ -298,7 +314,7 @@ func (m *ChatModel) View() string {
 // renderChatView renders the main chat interface
 func (m *ChatModel) renderChatView() string {
 	title := m.chatMode.ui.TitleStyle.Render("💬 Chat Mode")
-	
+
 	// Conversation info
 	msgCount := len(m.chatMode.conversation.Messages)
 	userMsgCount := 0
@@ -307,7 +323,7 @@ func (m *ChatModel) renderChatView() string {
 			userMsgCount++
 		}
 	}
-	
+
 	info := m.chatMode.ui.SubtitleStyle.Render(fmt.Sprintf(
 		"Messages: %d | User: %d | Provider: %s | Model: %s",
 		msgCount,
@@ -318,7 +334,7 @@ func (m *ChatModel) renderChatView() string {
 
 	// Chat history
 	history := m.renderChatHistory()
-	
+
 	// Input area
 	var inputArea string
 	if m.loading {
@@ -328,7 +344,7 @@ func (m *ChatModel) renderChatView() string {
 		input := m.chatMode.ui.InputStyle.Render("> " + m.input + "█")
 		inputArea = lipgloss.JoinVertical(lipgloss.Left, prompt, input)
 	}
-	
+
 	// Help text
 	help := m.chatMode.ui.HelpStyle.Render("Enter: Send • Ctrl+L: Clear • Ctrl+C/q: Quit • ↑↓: Scroll • Esc: Input mode")
 
@@ -355,21 +371,21 @@ func (m *ChatModel) renderChatHistory() string {
 	}
 
 	var messages []string
-	
+
 	// Apply scroll offset
 	visibleMessages := m.chatMode.conversation.Messages
 	if m.scrollOffset > 0 && m.scrollOffset < len(visibleMessages) {
 		visibleMessages = visibleMessages[:len(visibleMessages)-m.scrollOffset]
 	}
-	
+
 	for _, msg := range visibleMessages {
 		if msg.Role == "system" {
 			continue // Don't show system messages in chat history
 		}
-		
+
 		var rendered string
 		timestamp := msg.Timestamp.Format("15:04")
-		
+
 		switch msg.Role {
 		case "user":
 			header := lipgloss.NewStyle().
@@ -378,13 +394,13 @@ func (m *ChatModel) renderChatHistory() string {
 				Render(fmt.Sprintf("You (%s):", timestamp))
 			content := msg.Content
 			rendered = fmt.Sprintf("%s\n%s", header, content)
-			
+
 		case "assistant":
 			header := lipgloss.NewStyle().
 				Foreground(lipgloss.Color("#7C3AED")).
 				Bold(true).
 				Render(fmt.Sprintf("Assistant (%s):", timestamp))
-			
+
 			var content string
 			if m.chatMode.config.Markdown && m.chatMode.ui.IsMarkdown(msg.Content) {
 				content = m.chatMode.ui.RenderMarkdown(msg.Content)
@@ -393,18 +409,18 @@ func (m *ChatModel) renderChatHistory() string {
 			}
 			rendered = fmt.Sprintf("%s\n%s", header, content)
 		}
-		
+
 		if rendered != "" {
 			messages = append(messages, rendered)
 		}
 	}
-	
+
 	if len(messages) == 0 {
 		return m.chatMode.ui.SubtitleStyle.Render("No conversation history to display.")
 	}
-	
+
 	historyContent := strings.Join(messages, "\n\n")
-	
+
 	// Wrap in a scrollable container
 	return m.chatMode.ui.ResponseStyle.Render(historyContent)
 }
@@ -447,7 +463,9 @@ func (m *ChatModel) renderErrorView() string {
 
 // generateConversationID generates a unique ID for the conversation
 func generateConversationID() string {
-	return fmt.Sprintf("chat_%d", time.Now().Unix())
+	// Use nanosecond precision to avoid collisions in quick succession.
+	// This eliminates the need for explicit delays in tests or calling code.
+	return fmt.Sprintf("chat_%d", time.Now().UnixNano())
 }
 
 // Message types for BubbleTea
@@ -476,17 +494,17 @@ func (c *ChatMode) LoadConversation(conversation *Conversation) {
 // ExportConversation exports the conversation in a readable format
 func (c *ChatMode) ExportConversation() string {
 	var parts []string
-	
+
 	parts = append(parts, fmt.Sprintf("# Conversation %s", c.conversation.ID))
 	parts = append(parts, fmt.Sprintf("Created: %s", c.conversation.Created.Format("2006-01-02 15:04:05")))
 	parts = append(parts, fmt.Sprintf("Updated: %s", c.conversation.Updated.Format("2006-01-02 15:04:05")))
 	parts = append(parts, "")
-	
+
 	for _, msg := range c.conversation.Messages {
 		if msg.Role == "system" {
 			continue
 		}
-		
+
 		var role string
 		switch msg.Role {
 		case "user":
@@ -494,10 +512,10 @@ func (c *ChatMode) ExportConversation() string {
 		case "assistant":
 			role = "**Assistant**"
 		}
-		
+
 		timestamp := msg.Timestamp.Format("15:04")
 		parts = append(parts, fmt.Sprintf("%s (%s):\n%s\n", role, timestamp, msg.Content))
 	}
-	
+
 	return strings.Join(parts, "\n")
 }
