@@ -8,7 +8,7 @@ import (
 
 func TestNew(t *testing.T) {
 	ui := New()
-	
+
 	assert.NotNil(t, ui)
 	assert.NotNil(t, ui.TitleStyle)
 	assert.NotNil(t, ui.SubtitleStyle)
@@ -24,7 +24,7 @@ func TestNew(t *testing.T) {
 
 func TestRenderMarkdown(t *testing.T) {
 	ui := New()
-	
+
 	tests := []struct {
 		name     string
 		input    string
@@ -61,14 +61,14 @@ func TestRenderMarkdown(t *testing.T) {
 			contains: []string{"bold", "text"},
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := ui.RenderMarkdown(tt.input)
-			
+
 			// Check that result is not empty
 			assert.NotEmpty(t, result)
-			
+
 			// Check that expected strings are present
 			for _, expected := range tt.contains {
 				assert.Contains(t, result, expected, "Expected '%s' to be in rendered output", expected)
@@ -77,9 +77,22 @@ func TestRenderMarkdown(t *testing.T) {
 	}
 }
 
+func TestStreamingMarkdownConsistency(t *testing.T) {
+	ui := New()
+	text := "# Title\n\nSome **bold** text."
+	chunks := []string{"# Ti", "tle\n\nSome **bold**", " text."}
+	var rendered, buffer string
+	for _, ch := range chunks {
+		buffer += ch
+		rendered = ui.RenderMarkdown(buffer)
+	}
+	full := ui.RenderMarkdown(text)
+	assert.Equal(t, full, rendered)
+}
+
 func TestIsMarkdown(t *testing.T) {
 	ui := New()
-	
+
 	tests := []struct {
 		name     string
 		input    string
@@ -166,7 +179,7 @@ func TestIsMarkdown(t *testing.T) {
 			expected: true, // This will be detected as markdown, which is acceptable
 		},
 	}
-	
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := ui.IsMarkdown(tt.input)
@@ -178,10 +191,10 @@ func TestIsMarkdown(t *testing.T) {
 func TestRenderMarkdownFallback(t *testing.T) {
 	// Test fallback behavior when renderer is nil
 	ui := &UI{glamourRenderer: nil}
-	
+
 	input := "# Test Header\nSome content"
 	result := ui.RenderMarkdown(input)
-	
+
 	// Should return original text when renderer is nil
 	assert.Equal(t, input, result)
 }
