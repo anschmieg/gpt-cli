@@ -255,14 +255,19 @@ func requireAPIKey(t *testing.T, envVar string) string {
 
 // These integration tests will only run if API keys are provided
 func TestOpenAIIntegration(t *testing.T) {
-	if testing.Short() {
-		t.Skip("Skipping integration test in short mode")
-	}
+    if testing.Short() {
+        t.Skip("Skipping integration test in short mode")
+    }
 
-	apiKey := os.Getenv("OPENAI_API_KEY")
-	if apiKey == "" {
-		t.Skip("Skipping OpenAI integration test: OPENAI_API_KEY not set")
-	}
+    // Explicit opt-in gate to avoid accidental network calls during normal runs
+    if os.Getenv("GPT_CLI_RUN_INTEGRATION") != "1" {
+        t.Skip("Skipping OpenAI integration: set GPT_CLI_RUN_INTEGRATION=1 to enable")
+    }
+
+    apiKey := os.Getenv("OPENAI_API_KEY")
+    if apiKey == "" {
+        t.Skip("Skipping OpenAI integration test: OPENAI_API_KEY not set")
+    }
 
 	cfg := &config.Config{
 		Provider:    "openai",

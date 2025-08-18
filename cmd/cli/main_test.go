@@ -99,3 +99,30 @@ func TestStreamingPrintsChunks(t *testing.T) {
 	out := captureStdout(func() { runNonInteractiveWithProvider(cfg, "prompt", logger, mock, true) })
 	assert.Contains(t, out, "Hello World")
 }
+
+func TestNonStreamingPlainWhenMarkdownDisabled(t *testing.T) {
+    cfg := &config.Config{Markdown: false}
+    mock := &MockStreamProvider{chunks: []string{"# Header\n\nHello"}}
+    logger := utils.NewLogger(false)
+
+    out := captureStdout(func() { runNonInteractiveWithProvider(cfg, "prompt", logger, mock, false) })
+    // Plain output should preserve markdown syntax
+    assert.Contains(t, out, "# Header")
+}
+
+func TestJoinArgs(t *testing.T) {
+    got := joinArgs([]string{"one", "two", "three"})
+    assert.Equal(t, "one two three", got)
+    assert.Equal(t, "", joinArgs(nil))
+}
+
+func TestGetEnvOrDefault_CLI(t *testing.T) {
+    const k = "TEST_CLI_ENV_FN"
+    // Not set -> default
+    os.Unsetenv(k)
+    assert.Equal(t, "d", getEnvOrDefault(k, "d"))
+    // Set -> value
+    os.Setenv(k, "v")
+    defer os.Unsetenv(k)
+    assert.Equal(t, "v", getEnvOrDefault(k, "d"))
+}

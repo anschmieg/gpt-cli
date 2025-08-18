@@ -216,7 +216,14 @@ func (m *Model) renderResponseView() string {
 	// Render markdown if enabled
 	var response string
 	if m.config.Markdown {
-		response = m.ui.RenderMarkdown(m.response)
+		// Prefer the fragment-aware renderer supplied by UI.New(). It will
+		// render appropriately for TTY vs non-TTY and handle fragment-safe
+		// normalization.
+		if m.ui.Renderer != nil {
+			response = m.ui.Renderer.Render(m.response)
+		} else {
+			response = m.response
+		}
 	} else {
 		response = m.response
 	}

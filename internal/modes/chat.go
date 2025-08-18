@@ -10,6 +10,7 @@ import (
 	"github.com/anschmieg/gpt-cli/internal/ui"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+    "sync/atomic"
 )
 
 // Message represents a single message in the conversation
@@ -403,7 +404,11 @@ func (m *ChatModel) renderChatHistory() string {
 
 			var content string
 			if m.chatMode.config.Markdown && m.chatMode.ui.IsMarkdown(msg.Content) {
-				content = m.chatMode.ui.RenderMarkdown(msg.Content)
+				if m.chatMode.ui.Renderer != nil {
+					content = m.chatMode.ui.Renderer.Render(msg.Content)
+				} else {
+					content = msg.Content
+				}
 			} else {
 				content = msg.Content
 			}
@@ -462,8 +467,21 @@ func (m *ChatModel) renderErrorView() string {
 }
 
 // generateConversationID generates a unique ID for the conversation
+var lastConvID int64
+
 func generateConversationID() string {
-	return fmt.Sprintf("chat_%d", time.Now().Unix())
+    // Monotonic, unique ID based on time with atomic guard to avoid collisions
+    now := time.Now().UnixNano()
+    for {
+        prev := atomic.LoadInt64(&lastConvID)
+        if now <= prev {
+            now = prev + 1
+        }
+        if atomic.CompareAndSwapInt64(&lastConvID, prev, now) {
+            break
+        }
+    }
+    return fmt.Sprintf("chat_%d", now)
 }
 
 // Message types for BubbleTea

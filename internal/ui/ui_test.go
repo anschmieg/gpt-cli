@@ -19,7 +19,7 @@ func TestNew(t *testing.T) {
 	assert.NotNil(t, ui.LoadingStyle)
 	assert.NotNil(t, ui.HelpStyle)
 	assert.NotNil(t, ui.ContainerStyle)
-	assert.NotNil(t, ui.glamourRenderer)
+	assert.NotNil(t, ui.Renderer)
 }
 
 func TestRenderMarkdown(t *testing.T) {
@@ -64,7 +64,20 @@ func TestRenderMarkdown(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			result := ui.RenderMarkdown(tt.input)
+			var result string
+			if ui.Renderer != nil {
+				if ui.Renderer.glamour != nil {
+					if s, err := ui.Renderer.glamour.Render(tt.input); err == nil {
+						result = s
+					} else {
+						result = ui.Renderer.Render(tt.input)
+					}
+				} else {
+					result = ui.Renderer.Render(tt.input)
+				}
+			} else {
+				result = tt.input
+			}
 
 			// Check that result is not empty
 			assert.NotEmpty(t, result)
@@ -175,13 +188,6 @@ func TestIsMarkdown(t *testing.T) {
 	}
 }
 
-func TestRenderMarkdownFallback(t *testing.T) {
-	// Test fallback behavior when renderer is nil
-	ui := &UI{glamourRenderer: nil}
-
-	input := "# Test Header\nSome content"
-	result := ui.RenderMarkdown(input)
-
-	// Should return original text when renderer is nil
-	assert.Equal(t, input, result)
-}
+// The full-buffer helper was removed in favor of the fragment-aware
+// `Renderer`. Tests should exercise `ui.Renderer` (and may inspect
+// `ui.Renderer.glamour` in-package if they need to detect Glamour presence).

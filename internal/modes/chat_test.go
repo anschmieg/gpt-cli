@@ -171,7 +171,7 @@ func TestChatModelKeyHandling(t *testing.T) {
 		assert.Equal(t, "h", chatModel.input)
 	})
 
-	t.Run("backspace", func(t *testing.T) {
+		t.Run("backspace", func(t *testing.T) {
 		model.input = "hello"
 		msg := tea.KeyMsg{Type: tea.KeyBackspace}
 		updatedModel, cmd := model.Update(msg)
@@ -180,6 +180,26 @@ func TestChatModelKeyHandling(t *testing.T) {
 		chatModel := updatedModel.(*ChatModel)
 		assert.Equal(t, "hell", chatModel.input)
 	})
+
+		t.Run("scroll up/down in response or error state", func(t *testing.T) {
+			cfg2 := &config.Config{Provider: "mock", Model: "test-model"}
+			provider2 := &MockProvider{}
+			chatMode2 := NewChatMode(cfg2, provider2, ui)
+			model2 := NewChatModel(chatMode2, "")
+			model2.state = ChatStateResponse
+			model2.scrollOffset = 0
+			// Add multiple messages so scrolling is meaningful
+			model2.chatMode.conversation.Messages = append(model2.chatMode.conversation.Messages,
+				Message{Role: "assistant", Content: "A", Timestamp: time.Now()},
+				Message{Role: "assistant", Content: "B", Timestamp: time.Now()},
+			)
+			up := tea.KeyMsg{Type: tea.KeyUp}
+			_, _ = model2.Update(up)
+			assert.Equal(t, 0, model2.scrollOffset) // cannot go negative
+			down := tea.KeyMsg{Type: tea.KeyDown}
+			_, _ = model2.Update(down)
+			assert.Equal(t, 1, model2.scrollOffset)
+		})
 
 	t.Run("enter with input", func(t *testing.T) {
 		model.input = "test message"
@@ -262,13 +282,12 @@ func TestFormatConversationForProvider(t *testing.T) {
 }
 
 func TestGenerateConversationID(t *testing.T) {
-	id1 := generateConversationID()
-	time.Sleep(1 * time.Second) // Ensure different timestamp
-	id2 := generateConversationID()
+    id1 := generateConversationID()
+    id2 := generateConversationID()
 
-	assert.NotEqual(t, id1, id2)
-	assert.Contains(t, id1, "chat_")
-	assert.Contains(t, id2, "chat_")
+    assert.NotEqual(t, id1, id2)
+    assert.Contains(t, id1, "chat_")
+    assert.Contains(t, id2, "chat_")
 
 	// Test that they both follow expected format
 	assert.Regexp(t, `^chat_\d+$`, id1)

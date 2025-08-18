@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+    "time"
 
 	"github.com/anschmieg/gpt-cli/internal/config"
 )
@@ -19,10 +20,10 @@ type OpenAIProvider struct {
 
 // NewOpenAIProvider creates a new OpenAI provider
 func NewOpenAIProvider(config *config.Config) *OpenAIProvider {
-	return &OpenAIProvider{
-		config: config,
-		client: &http.Client{},
-	}
+    return &OpenAIProvider{
+        config: config,
+        client: &http.Client{Timeout: 10 * time.Second},
+    }
 }
 
 // GetName returns the provider name

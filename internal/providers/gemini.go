@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+    "time"
 
 	"github.com/anschmieg/gpt-cli/internal/config"
 )
@@ -19,10 +20,10 @@ type GeminiProvider struct {
 
 // NewGeminiProvider creates a new Gemini provider
 func NewGeminiProvider(config *config.Config) *GeminiProvider {
-	return &GeminiProvider{
-		config: config,
-		client: &http.Client{},
-	}
+    return &GeminiProvider{
+        config: config,
+        client: &http.Client{Timeout: 10 * time.Second},
+    }
 }
 
 // GetName returns the provider name

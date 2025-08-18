@@ -1,10 +1,11 @@
 package ui
 
 import (
+	"os"
 	"strings"
 
-	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/mattn/go-isatty"
 )
 
 // UI handles the user interface styling and rendering
@@ -20,17 +21,19 @@ type UI struct {
 	HelpStyle      lipgloss.Style
 	ContainerStyle lipgloss.Style
 
-	// Markdown renderer
-	glamourRenderer *glamour.TermRenderer
+	// Fragment-aware renderer for streaming-safe rendering
+	Renderer *Renderer
 }
 
 // New creates a new UI instance with default styles
 func New() *UI {
-	// Create glamour renderer for proper markdown rendering
-	renderer, _ := glamour.NewTermRenderer(
-		glamour.WithAutoStyle(),
-		glamour.WithWordWrap(80),
-	)
+	// Create fragment-aware renderer; enable TTY rendering only when stdout is a terminal
+	var fragRenderer *Renderer
+	if isatty.IsTerminal(os.Stdout.Fd()) {
+		fragRenderer = NewRenderer(true)
+	} else {
+		fragRenderer = NewRenderer(false)
+	}
 
 	return &UI{
 		TitleStyle: lipgloss.NewStyle().
@@ -83,26 +86,13 @@ func New() *UI {
 		ContainerStyle: lipgloss.NewStyle().
 			Padding(2),
 
-		glamourRenderer: renderer,
+		Renderer: fragRenderer,
 	}
 }
 
-// RenderMarkdown renders markdown text using Glamour for proper formatting
-func (ui *UI) RenderMarkdown(text string) string {
-	if ui.glamourRenderer == nil {
-		// Fallback to plain text if renderer failed to initialize
-		return text
-	}
-
-	rendered, err := ui.glamourRenderer.Render(text)
-	if err != nil {
-		// Fallback to plain text on error
-		return text
-	}
-
-	// Remove trailing newlines
-	return strings.TrimRight(rendered, "\n")
-}
+// Note: full-buffer Glamour rendering was replaced by the fragment-aware
+// Renderer. The Renderer handles TTY vs non-TTY rendering and fragment-safe
+// normalization; use it via `UI.Renderer`.
 
 // IsMarkdown checks if text appears to contain markdown formatting
 func (ui *UI) IsMarkdown(text string) bool {

@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+    "time"
 
 	"github.com/anschmieg/gpt-cli/internal/config"
 )
@@ -19,10 +20,10 @@ type CopilotProvider struct {
 
 // NewCopilotProvider creates a new Copilot provider
 func NewCopilotProvider(config *config.Config) *CopilotProvider {
-	return &CopilotProvider{
-		config: config,
-		client: &http.Client{},
-	}
+    return &CopilotProvider{
+        config: config,
+        client: &http.Client{Timeout: 10 * time.Second},
+    }
 }
 
 // GetName returns the provider name

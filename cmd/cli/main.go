@@ -1,10 +1,10 @@
 package main
 
 import (
-	"fmt"
-	"os"
-	"strconv"
-	"strings"
+    "fmt"
+    "os"
+    "strconv"
+    "strings"
 
 	"github.com/anschmieg/gpt-cli/internal/config"
 	"github.com/anschmieg/gpt-cli/internal/modes"
@@ -26,8 +26,17 @@ var (
 	stream      bool
 	noStream    bool
 	shellMode   bool
-	chatMode    bool
+    chatMode    bool
 )
+
+// exitFunc allows tests to intercept exits without terminating the process.
+var exitFunc = func(code int) { os.Exit(code) }
+// newUI returns a UI instance; tests may override for renderer control.
+var newUI = ui.New
+
+// programRunner abstracts the BubbleTea program so tests can avoid launching TUI.
+type programRunner interface{ Run() (tea.Model, error) }
+var newProgram = func(m tea.Model) programRunner { return tea.NewProgram(m, tea.WithAltScreen()) }
 
 var rootCmd = &cobra.Command{
 	Use:   "gpt-cli [prompt]",
@@ -109,10 +118,10 @@ func runCLI(cmd *cobra.Command, args []string) {
 	}
 
 	// Check for conflicting modes
-	if shellMode && chatMode {
-		fmt.Fprintf(os.Stderr, "Error: Cannot use both --shell and --chat modes simultaneously\n")
-		os.Exit(1)
-	}
+    if shellMode && chatMode {
+        fmt.Fprintf(os.Stderr, "Error: Cannot use both --shell and --chat modes simultaneously\n")
+        exitFunc(1)
+    }
 
 	if len(args) > 0 {
 		prompt := joinArgs(args)
@@ -136,11 +145,11 @@ func runCLI(cmd *cobra.Command, args []string) {
 		return
 	}
 
-	if shellMode {
-		fmt.Fprintf(os.Stderr, "Error: Shell mode requires a prompt argument\n")
-		fmt.Fprintf(os.Stderr, "Usage: gpt-cli --shell \"your request for a shell command\"\n")
-		os.Exit(1)
-	}
+    if shellMode {
+        fmt.Fprintf(os.Stderr, "Error: Shell mode requires a prompt argument\n")
+        fmt.Fprintf(os.Stderr, "Usage: gpt-cli --shell \"your request for a shell command\"\n")
+        exitFunc(1)
+    }
 
 	// No args and no mode: show help
 	_ = cmd.Help()
@@ -157,14 +166,19 @@ var isTerminalFunc = func(fd uintptr) bool { return isatty.IsTerminal(fd) }
 // runNonInteractiveWithProvider runs the non-interactive flow using an explicit provider.
 // This is exposed to make testing streaming vs non-streaming and TTY behavior easier.
 func runNonInteractiveWithProvider(cfg *config.Config, prompt string, logger *utils.Logger, provider providers.Provider, streamFlag bool) {
-	ui := ui.New()
+	u := newUI()
+	// Use the UI's fragment-aware renderer instance so rendering behaviour is
+	// consistent and any TTY detection performed in UI.New() is respected.
+	renderer := u.Renderer
 
 	logger.Debugf("Using provider: %s", cfg.Provider)
 	logger.Debugf("Using model: %s", cfg.Model)
 	logger.Debugf("Temperature: %.2f", cfg.Temperature)
 
 	if streamFlag {
-		// Handle streaming with incremental markdown rendering
+		// Handle streaming with incremental markdown rendering.
+		// Prefer the fragment-aware Renderer when available; fall back to
+		// the previous full-buffer diff approach if the renderer isn't usable.
 		contentChan, errorChan := provider.StreamProvider(prompt)
 
 		var rawBuffer string
@@ -177,34 +191,58 @@ func runNonInteractiveWithProvider(cfg *config.Config, prompt string, logger *ut
 					fmt.Println()
 					return
 				}
-				rawBuffer += chunk
-				if cfg.Markdown {
-					newRendered := ui.RenderMarkdown(rawBuffer)
+				// If we have a fragment renderer, render the incoming chunk
+				// directly. It's designed to handle fences and blank-line
+				// collapsing across fragments.
+				if cfg.Markdown && renderer != nil {
+					out := renderer.Render(chunk)
+					fmt.Print(out)
+				} else if cfg.Markdown {
+					// If we get here use the fragment renderer on the
+					// accumulated buffer. UI.New() always initializes a
+					// Renderer so this will behave like the fragment
+					// path above and avoids relying on the Glamour-only
+					// path.
+					rawBuffer += chunk
+					newRendered := renderer.Render(rawBuffer)
 					diff := strings.TrimPrefix(newRendered, rendered)
 					fmt.Print(diff)
 					rendered = newRendered
 				} else {
 					fmt.Print(chunk)
 				}
-			case err, ok := <-errorChan:
-				if ok && err != nil {
-					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-					os.Exit(1)
-				}
+            case err, ok := <-errorChan:
+                if ok && err != nil {
+                    fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+                    exitFunc(1)
+                    // In tests exitFunc may be overridden and not terminate
+                    // the process; return to avoid blocking on streams.
+                    return
+                }
 			}
 		}
 	}
 
 	// Non-streaming
 	response, err := provider.CallProvider(prompt)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+        exitFunc(1)
+    }
 
-	// Render markdown only when enabled and stdout is a terminal
+	// Render markdown only when enabled and stdout is a terminal. Prefer the
+	// fragment-aware Renderer when available; otherwise fall back to the
+	// existing glamour-based renderer on UI.
 	if cfg.Markdown && isTerminalFunc(os.Stdout.Fd()) {
-		fmt.Println(ui.RenderMarkdown(response))
+		if renderer != nil {
+			// Renderer.Render includes its own trailing newline
+			// normalization so use Print to avoid double newlines.
+			fmt.Print(renderer.Render(response))
+		} else {
+			// Renderer should always be initialized by UI.New(), but if for
+			// any reason it's nil, fall back to plain response.
+			fmt.Println(response)
+		}
 	} else {
 		fmt.Println(response)
 	}
@@ -212,7 +250,7 @@ func runNonInteractiveWithProvider(cfg *config.Config, prompt string, logger *ut
 
 func runShellMode(cfg *config.Config, prompt string, logger *utils.Logger) {
 	provider := providers.NewProvider(cfg.Provider, cfg)
-	ui := ui.New()
+	ui := newUI()
 
 	logger.Debugf("Using provider: %s", cfg.Provider)
 	logger.Debugf("Using model: %s", cfg.Model)
@@ -220,16 +258,17 @@ func runShellMode(cfg *config.Config, prompt string, logger *utils.Logger) {
 
 	shellMode := modes.NewShellMode(cfg, provider, ui)
 
-	err := shellMode.InteractiveMode(prompt)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error in shell mode: %v\n", err)
-		os.Exit(1)
-	}
+    err := shellMode.InteractiveMode(prompt)
+    if err != nil {
+        fmt.Fprintf(os.Stderr, "Error in shell mode: %v\n", err)
+        exitFunc(1)
+    }
 }
 
+
 func runChatMode(cfg *config.Config, logger *utils.Logger, initialPrompt string) {
-	provider := providers.NewProvider(cfg.Provider, cfg)
-	ui := ui.New()
+    provider := providers.NewProvider(cfg.Provider, cfg)
+    ui := newUI()
 
 	logger.Debugf("Using provider: %s", cfg.Provider)
 	logger.Debugf("Using model: %s", cfg.Model)
@@ -238,12 +277,12 @@ func runChatMode(cfg *config.Config, logger *utils.Logger, initialPrompt string)
 	chatMode := modes.NewChatMode(cfg, provider, ui)
 	model := modes.NewChatModel(chatMode, initialPrompt)
 
-	p := tea.NewProgram(model, tea.WithAltScreen())
+    p := newProgram(model)
 
-	if _, err := p.Run(); err != nil {
-		fmt.Fprintf(os.Stderr, "Error running chat mode: %v\n", err)
-		os.Exit(1)
-	}
+    if _, err := p.Run(); err != nil {
+        fmt.Fprintf(os.Stderr, "Error running chat mode: %v\n", err)
+        exitFunc(1)
+    }
 }
 
 func joinArgs(args []string) string {
