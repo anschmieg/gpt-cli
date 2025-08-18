@@ -6,18 +6,27 @@ import (
 
 // Provider interface defines the contract for AI providers
 type Provider interface {
-	CallProvider(prompt string) (string, error)
-	StreamProvider(prompt string) (<-chan string, <-chan error)
-	GetName() string
+    CallProvider(prompt string) (string, error)
+    StreamProvider(prompt string) (<-chan string, <-chan error)
+    GetName() string
 }
+
+// NewProviderHook allows tests (e.g., e2e) to override provider construction.
+// If set, NewProvider will delegate to this hook.
+var NewProviderHook func(providerName string, cfg *config.Config) Provider
 
 // NewProvider creates a new provider based on the configuration
 func NewProvider(providerName string, config *config.Config) Provider {
-	switch providerName {
-	case "openai":
-		return NewOpenAIProvider(config)
-	case "copilot":
-		return NewCopilotProvider(config)
+    if NewProviderHook != nil {
+        if p := NewProviderHook(providerName, config); p != nil {
+            return p
+        }
+    }
+    switch providerName {
+    case "openai":
+        return NewOpenAIProvider(config)
+    case "copilot":
+        return NewCopilotProvider(config)
 	case "gemini":
 		return NewGeminiProvider(config)
 	default:
