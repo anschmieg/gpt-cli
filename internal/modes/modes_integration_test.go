@@ -47,3 +47,19 @@ func TestShellMode_Interactive_Integration(t *testing.T) {
     assert.Contains(t, out, "echo hi")
 }
 
+func TestChatMode_InitWithInitialPrompt_Integration(t *testing.T) {
+    cfg := &config.Config{Provider: "mock", Model: "m"}
+    u := ui.New()
+    p := integProv{resp: "Hello from chat"}
+    mode := NewChatMode(cfg, p, u)
+    m := NewChatModel(mode, "hi")
+    cmd := m.Init()
+    if cmd == nil { t.Fatalf("expected cmd from Init") }
+    // Resolve request
+    msg := cmd()
+    _, _ = m.Update(msg)
+    // After response, conversation should include assistant message
+    if len(m.chatMode.conversation.Messages) == 0 {
+        t.Fatalf("expected messages")
+    }
+}
