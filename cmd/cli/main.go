@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/anschmieg/gpt-cli/internal/config"
 	"github.com/anschmieg/gpt-cli/internal/modes"
@@ -11,7 +12,6 @@ import (
 	"github.com/anschmieg/gpt-cli/internal/ui"
 	"github.com/anschmieg/gpt-cli/internal/utils"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 )
 
@@ -23,6 +23,7 @@ var (
 	markdown    bool
 	system      string
 	stream      bool
+	noStream    bool
 	shellMode   bool
 	chatMode    bool
 )
@@ -42,7 +43,8 @@ func init() {
 	rootCmd.Flags().BoolVar(&verbose, "verbose", false, "Enable verbose logging")
 	rootCmd.Flags().BoolVar(&markdown, "markdown", true, "Enable markdown rendering")
 	rootCmd.Flags().StringVar(&system, "system", "", "System prompt")
-	rootCmd.Flags().BoolVar(&stream, "stream", false, "Enable streaming responses")
+	rootCmd.Flags().BoolVar(&stream, "stream", true, "Enable streaming responses")
+	rootCmd.Flags().BoolVar(&noStream, "no-stream", false, "Disable streaming responses")
 	rootCmd.Flags().BoolVar(&shellMode, "shell", false, "Shell suggestion mode - suggest bash commands with safety ratings")
 	rootCmd.Flags().BoolVar(&chatMode, "chat", false, "Chat mode - interactive TUI with conversation memory")
 }
@@ -100,77 +102,79 @@ func runCLI(cmd *cobra.Command, args []string) {
 	// Create logger
 	logger := utils.NewLogger(cfg.Verbose)
 
+	// Apply streaming flag override
+	if noStream {
+		stream = false
+	}
+
 	// Check for conflicting modes
 	if shellMode && chatMode {
 		fmt.Fprintf(os.Stderr, "Error: Cannot use both --shell and --chat modes simultaneously\n")
 		os.Exit(1)
 	}
 
-	// If prompt provided as arguments, run in non-interactive mode
 	if len(args) > 0 {
 		prompt := joinArgs(args)
 
-		// Handle different modes
+		if chatMode {
+			runChatMode(cfg, logger, prompt)
+			return
+		}
+
 		if shellMode {
 			runShellMode(cfg, prompt, logger)
-		} else if chatMode {
-			fmt.Fprintf(os.Stderr, "Error: Chat mode requires interactive TUI. Remove arguments to use chat mode.\n")
-			os.Exit(1)
-		} else {
-			runNonInteractive(cfg, prompt, logger)
+			return
 		}
+
+		runNonInteractive(cfg, prompt, logger)
 		return
 	}
 
-	// No arguments provided - determine mode
+	if chatMode {
+		runChatMode(cfg, logger, "")
+		return
+	}
+
 	if shellMode {
 		fmt.Fprintf(os.Stderr, "Error: Shell mode requires a prompt argument\n")
 		fmt.Fprintf(os.Stderr, "Usage: gpt-cli --shell \"your request for a shell command\"\n")
 		os.Exit(1)
-	} else if chatMode {
-		runChatMode(cfg, logger)
-		return
 	}
 
-	// Print help and exit if no arguments provided and no mode specified
-	fmt.Println("No prompt provided. Use --help for usage information.")
-	fmt.Println("Available modes:")
-	fmt.Println("  gpt-cli \"your prompt\"        - Simple inline mode")
-	fmt.Println("  gpt-cli --shell \"your task\"  - Shell command suggestions")
-	fmt.Println("  gpt-cli --chat               - Interactive chat with memory")
-	fmt.Println("  go run main.go               - Original TUI mode")
-	os.Exit(1)
+	// No args and no mode: show help
+	_ = cmd.Help()
 }
 
 func runNonInteractive(cfg *config.Config, prompt string, logger *utils.Logger) {
 	provider := providers.NewProvider(cfg.Provider, cfg)
-	runNonInteractiveWithProvider(cfg, prompt, logger, provider, stream)
-}
-
-// isTerminalFunc is a hookable function to detect terminals. Tests may override this.
-var isTerminalFunc = func(fd uintptr) bool { return isatty.IsTerminal(fd) }
-
-// runNonInteractiveWithProvider runs the non-interactive flow using an explicit provider.
-// This is exposed to make testing streaming vs non-streaming and TTY behavior easier.
-func runNonInteractiveWithProvider(cfg *config.Config, prompt string, logger *utils.Logger, provider providers.Provider, streamFlag bool) {
 	ui := ui.New()
 
 	logger.Debugf("Using provider: %s", cfg.Provider)
 	logger.Debugf("Using model: %s", cfg.Model)
 	logger.Debugf("Temperature: %.2f", cfg.Temperature)
 
-	if streamFlag {
-		// Handle streaming
+	if stream {
 		contentChan, errorChan := provider.StreamProvider(prompt)
+
+		var rawBuffer string
+		var rendered string
 
 		for {
 			select {
 			case chunk, ok := <-contentChan:
 				if !ok {
-					fmt.Println() // New line at end
+					fmt.Println()
 					return
 				}
-				fmt.Print(chunk)
+				rawBuffer += chunk
+				if cfg.Markdown {
+					newRendered := ui.RenderMarkdown(rawBuffer)
+					diff := strings.TrimPrefix(newRendered, rendered)
+					fmt.Print(diff)
+					rendered = newRendered
+				} else {
+					fmt.Print(chunk)
+				}
 			case err, ok := <-errorChan:
 				if ok && err != nil {
 					fmt.Fprintf(os.Stderr, "Error: %v\n", err)
@@ -178,20 +182,18 @@ func runNonInteractiveWithProvider(cfg *config.Config, prompt string, logger *ut
 				}
 			}
 		}
-	}
-
-	// Non-streaming
-	response, err := provider.CallProvider(prompt)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-		os.Exit(1)
-	}
-
-	// Render markdown only when enabled and stdout is a terminal
-	if cfg.Markdown && isTerminalFunc(os.Stdout.Fd()) {
-		fmt.Println(ui.RenderMarkdown(response))
 	} else {
-		fmt.Println(response)
+		response, err := provider.CallProvider(prompt)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+			os.Exit(1)
+		}
+
+		if cfg.Markdown {
+			fmt.Println(ui.RenderMarkdown(response))
+		} else {
+			fmt.Println(response)
+		}
 	}
 }
 
@@ -212,7 +214,7 @@ func runShellMode(cfg *config.Config, prompt string, logger *utils.Logger) {
 	}
 }
 
-func runChatMode(cfg *config.Config, logger *utils.Logger) {
+func runChatMode(cfg *config.Config, logger *utils.Logger, initialPrompt string) {
 	provider := providers.NewProvider(cfg.Provider, cfg)
 	ui := ui.New()
 
@@ -221,9 +223,8 @@ func runChatMode(cfg *config.Config, logger *utils.Logger) {
 	logger.Debugf("Starting chat mode")
 
 	chatMode := modes.NewChatMode(cfg, provider, ui)
-	model := modes.NewChatModel(chatMode)
+	model := modes.NewChatModel(chatMode, initialPrompt)
 
-	// Create the BubbleTea program
 	p := tea.NewProgram(model, tea.WithAltScreen())
 
 	if _, err := p.Run(); err != nil {
