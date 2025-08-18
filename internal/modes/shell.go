@@ -1,17 +1,18 @@
 package modes
 
 import (
-	"encoding/json"
-	"fmt"
-	"os"
-	"os/exec"
-	"regexp"
-	"strings"
+    "encoding/json"
+    "fmt"
+    "os"
+    "os/exec"
+    "regexp"
+    "strings"
 
-	"github.com/anschmieg/gpt-cli/internal/config"
-	"github.com/anschmieg/gpt-cli/internal/providers"
-	"github.com/anschmieg/gpt-cli/internal/ui"
-	"github.com/charmbracelet/lipgloss"
+    "github.com/anschmieg/gpt-cli/internal/config"
+    "github.com/anschmieg/gpt-cli/internal/providers"
+    "github.com/anschmieg/gpt-cli/internal/ui"
+    "github.com/charmbracelet/lipgloss"
+    "bufio"
 )
 
 // ShellSuggestion represents a shell command suggestion with safety information
@@ -24,9 +25,11 @@ type ShellSuggestion struct {
 
 // ShellMode handles shell command suggestion functionality
 type ShellMode struct {
-	config   *config.Config
-	provider providers.Provider
-	ui       *ui.UI
+    config   *config.Config
+    provider providers.Provider
+    ui       *ui.UI
+    // lastPrompt holds the original user prompt for refinement context
+    lastPrompt string
 }
 
 // NewShellMode creates a new shell mode instance
@@ -140,9 +143,10 @@ func (s *ShellMode) parseShellSuggestion(response string) (*ShellSuggestion, err
 
 // InteractiveMode runs the shell suggestion mode interactively
 func (s *ShellMode) InteractiveMode(prompt string) error {
-	// Get command suggestion
-	fmt.Println("🤖 Generating shell command suggestion...")
-	suggestion, err := s.SuggestCommand(prompt)
+    // Get command suggestion
+    fmt.Println("🤖 Generating shell command suggestion...")
+    s.lastPrompt = prompt
+    suggestion, err := s.SuggestCommand(prompt)
 	if err != nil {
 		return err
 	}
@@ -201,9 +205,13 @@ func (s *ShellMode) promptUserAction(suggestion *ShellSuggestion) error {
 	fmt.Println("  [a] Abort")
 	fmt.Print("\nChoice [e/m/r/a]: ")
 
-	var choice string
-	fmt.Scanln(&choice)
-	choice = strings.ToLower(strings.TrimSpace(choice))
+    // Read a full line and take the first non-space rune as the choice.
+    reader := bufio.NewReader(os.Stdin)
+    line, _ := reader.ReadString('\n')
+    choice := strings.ToLower(strings.TrimSpace(line))
+    if len(choice) > 0 {
+        choice = string([]rune(choice)[0])
+    }
 
 	switch choice {
 	case "e", "execute":
@@ -235,35 +243,42 @@ func (s *ShellMode) executeCommand(command string) error {
 
 // editAndExecute allows the user to edit the command before execution
 func (s *ShellMode) editAndExecute(command string) error {
-	fmt.Printf("\n%s\n", s.ui.PromptStyle.Render("Edit the command (or press Enter to use as-is):"))
-	fmt.Printf("Current: %s\n", command)
-	fmt.Print("Edited:  ")
+    fmt.Printf("\n%s\n", s.ui.PromptStyle.Render("Edit the command (press Enter to accept):"))
+    fmt.Printf("Current: %s\n", command)
+    fmt.Print("Edited:  ")
 
-	var editedCommand string
-	fmt.Scanln(&editedCommand)
-
-	if strings.TrimSpace(editedCommand) == "" {
-		editedCommand = command
-	}
+    reader := bufio.NewReader(os.Stdin)
+    line, _ := reader.ReadString('\n')
+    editedCommand := strings.TrimSpace(line)
+    if editedCommand == "" {
+        editedCommand = command
+    }
 
 	return s.executeCommand(editedCommand)
 }
 
 // refineCommand allows the user to provide additional context to refine the suggestion
 func (s *ShellMode) refineCommand(suggestion *ShellSuggestion) error {
-	fmt.Printf("\n%s\n", s.ui.PromptStyle.Render("Please provide additional context or corrections:"))
-	fmt.Print("Refinement: ")
+    fmt.Printf("\n%s\n", s.ui.PromptStyle.Render("Please provide additional context or corrections:"))
+    fmt.Print("Refinement: ")
 
-	var refinement string
-	fmt.Scanln(&refinement)
+    reader := bufio.NewReader(os.Stdin)
+    line, _ := reader.ReadString('\n')
+    refinement := strings.TrimSpace(line)
 
-	if strings.TrimSpace(refinement) == "" {
-		fmt.Println("No refinement provided. Returning to original suggestion.")
-		return s.promptUserAction(suggestion)
-	}
+    if refinement == "" {
+        fmt.Println("No refinement provided. Returning to original suggestion.")
+        return s.promptUserAction(suggestion)
+    }
 
-	// Create a new prompt with the refinement
-	newPrompt := fmt.Sprintf("Original command suggestion: %s\nUser feedback: %s\nPlease provide an improved command suggestion.", suggestion.Command, refinement)
+    // Create a new prompt with the refinement
+    // Keep prior context: original user prompt and previous suggestion.
+    base := s.lastPrompt
+    if base == "" { base = "(no original prompt)" }
+    newPrompt := fmt.Sprintf(
+        "Original user request: %s\nPrevious suggestion: %s\nUser feedback/refinement: %s\nPlease provide an improved command suggestion.",
+        base, suggestion.Command, refinement,
+    )
 
 	fmt.Println("\n🤖 Generating refined suggestion...")
 	newSuggestion, err := s.SuggestCommand(newPrompt)
@@ -272,6 +287,6 @@ func (s *ShellMode) refineCommand(suggestion *ShellSuggestion) error {
 		return s.promptUserAction(suggestion) // Fallback to original
 	}
 
-	s.displaySuggestion(newSuggestion)
-	return s.promptUserAction(newSuggestion)
+    s.displaySuggestion(newSuggestion)
+    return s.promptUserAction(newSuggestion)
 }

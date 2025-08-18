@@ -19,22 +19,24 @@ endef
 test: test-unit
 
 # Unit tests: quick, high coverage, no integration/e2e (tags excluded by default)
+VERBOSE?=0
+GOFLAGS?=
+
 test-unit:
-	@echo "Running unit tests..."
-	$(CLEAR_ENV) GOCACHE=$(PWD)/.gocache go test ./... -cover -short
+    @echo "Running unit tests..."
+    $(CLEAR_ENV) GOCACHE=$(PWD)/.gocache go test ./... -cover -short $(GOFLAGS) $(if $(filter 1,$(VERBOSE)),-v,)
 
 # Integration tests: enable tests tagged 'integration'. These use fakes/mocks and
 # exercise module interactions (e.g., provider HTTP roundtrips) but avoid real network.
 test-integration:
-	@echo "Running integration tests..."
-	$(CLEAR_ENV) GOCACHE=$(PWD)/.gocache go test -tags=integration ./... -cover -timeout=20s
+    @echo "Running integration tests..."
+    $(CLEAR_ENV) GOCACHE=$(PWD)/.gocache go test -tags=integration ./... -cover -timeout=20s $(GOFLAGS) $(if $(filter 1,$(VERBOSE)),-v,)
 
 # E2E tests: enabled via 'e2e' build tag and capped at 30s by a TestMain guard.
 # These live in the root package.
 test-e2e:
-	@echo "Running e2e tests (budget 30s)..."
-	$(CLEAR_ENV) GOCACHE=$(PWD)/.gocache go test -tags=e2e . -timeout=30s -cover
+    @echo "Running e2e tests (budget 30s)..."
+    $(CLEAR_ENV) GOCACHE=$(PWD)/.gocache go test -tags=e2e . -timeout=30s -cover $(GOFLAGS) $(if $(filter 1,$(VERBOSE)),-v,)
 
 # Run everything in sequence
 test-all: test-unit test-integration test-e2e
-
