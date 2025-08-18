@@ -143,6 +143,8 @@ providers:
 
 See `examples/config.yml` and `examples/config.json` for complete examples.
 
+Configuration files support shell-style environment variable references like ${OPENAI_API_KEY}, which are expanded at load time.
+
 ### Environment Variables
 
 Set up your API keys and configuration:

@@ -2,6 +2,7 @@ package modes
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/anschmieg/gpt-cli/internal/config"
@@ -12,30 +13,46 @@ import (
 
 // MockProvider for testing shell mode
 type MockProvider struct {
-	response string
-	err      error
+	response     string
+	streamChunks []string
+	err          error
 }
 
 func (m *MockProvider) CallProvider(prompt string) (string, error) {
 	if m.err != nil {
 		return "", m.err
 	}
-	return m.response, nil
+	if m.response != "" {
+		return m.response, nil
+	}
+	return strings.Join(m.streamChunks, ""), nil
 }
 
 func (m *MockProvider) StreamProvider(prompt string) (<-chan string, <-chan error) {
-	contentChan := make(chan string, 1)
+	contentChan := make(chan string)
 	errorChan := make(chan error, 1)
-	
-	if m.err != nil {
-		errorChan <- m.err
-	} else {
-		contentChan <- m.response
-	}
-	
-	close(contentChan)
-	close(errorChan)
-	
+
+	go func() {
+		defer close(contentChan)
+		defer close(errorChan)
+
+		if m.err != nil {
+			errorChan <- m.err
+			return
+		}
+
+		if len(m.streamChunks) > 0 {
+			for _, ch := range m.streamChunks {
+				contentChan <- ch
+			}
+			return
+		}
+
+		if m.response != "" {
+			contentChan <- m.response
+		}
+	}()
+
 	return contentChan, errorChan
 }
 
@@ -50,9 +67,9 @@ func TestNewShellMode(t *testing.T) {
 	}
 	provider := &MockProvider{}
 	ui := ui.New()
-	
+
 	mode := NewShellMode(cfg, provider, ui)
-	
+
 	assert.NotNil(t, mode)
 	assert.Equal(t, cfg, mode.config)
 	assert.Equal(t, provider, mode.provider)
@@ -61,7 +78,7 @@ func TestNewShellMode(t *testing.T) {
 
 func TestParseShellSuggestion(t *testing.T) {
 	mode := &ShellMode{}
-	
+
 	tests := []struct {
 		name        string
 		response    string
@@ -84,7 +101,7 @@ func TestParseShellSuggestion(t *testing.T) {
 			},
 		},
 		{
-			name: "JSON with markdown code blocks",
+			name:     "JSON with markdown code blocks",
 			response: "```json\n{\n  \"command\": \"mkdir test\",\n  \"safety_level\": \"moderate\",\n  \"explanation\": \"Creates a directory named test\"\n}\n```",
 			expected: &ShellSuggestion{
 				Command:     "mkdir test",
@@ -93,7 +110,7 @@ func TestParseShellSuggestion(t *testing.T) {
 			},
 		},
 		{
-			name: "JSON embedded in text",
+			name:     "JSON embedded in text",
 			response: "Here's the command suggestion: {\"command\": \"echo hello\", \"safety_level\": \"safe\", \"explanation\": \"Prints hello to stdout\"} Hope this helps!",
 			expected: &ShellSuggestion{
 				Command:     "echo hello",
@@ -131,7 +148,7 @@ func TestParseShellSuggestion(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result, err := mode.parseShellSuggestion(tt.response)
-			
+
 			if tt.expectError {
 				assert.Error(t, err)
 				assert.Nil(t, result)
@@ -187,9 +204,9 @@ func TestSuggestCommand(t *testing.T) {
 			}
 			ui := ui.New()
 			mode := NewShellMode(cfg, provider, ui)
-			
+
 			suggestion, err := mode.SuggestCommand(tt.prompt)
-			
+
 			if tt.expectError {
 				assert.Error(t, err)
 				assert.Nil(t, suggestion)
@@ -206,7 +223,7 @@ func TestSuggestCommand(t *testing.T) {
 
 func TestGetSafetyColor(t *testing.T) {
 	mode := &ShellMode{ui: ui.New()}
-	
+
 	tests := []struct {
 		level    string
 		expected string // Color value
@@ -216,7 +233,7 @@ func TestGetSafetyColor(t *testing.T) {
 			expected: "#059669", // Green
 		},
 		{
-			level:    "moderate", 
+			level:    "moderate",
 			expected: "#EAB308", // Yellow
 		},
 		{
@@ -242,14 +259,14 @@ func TestDisplaySuggestion(t *testing.T) {
 	// This test mainly ensures displaySuggestion doesn't panic
 	// Since it prints to stdout, we can't easily test the output
 	mode := &ShellMode{ui: ui.New()}
-	
+
 	suggestion := &ShellSuggestion{
 		Command:     "ls -la",
 		SafetyLevel: "safe",
 		Explanation: "Lists all files",
 		Reasoning:   "Read-only operation",
 	}
-	
+
 	// This should not panic
 	mode.displaySuggestion(suggestion)
 }
@@ -288,7 +305,7 @@ func TestShellSuggestionValidation(t *testing.T) {
 				assert.NotEmpty(t, tt.suggestion.Command)
 				assert.NotEmpty(t, tt.suggestion.SafetyLevel)
 				assert.NotEmpty(t, tt.suggestion.Explanation)
-				
+
 				// Validate safety level is one of the expected values
 				validLevels := []string{"safe", "moderate", "dangerous"}
 				assert.Contains(t, validLevels, tt.suggestion.SafetyLevel)
@@ -304,20 +321,20 @@ func TestShellModeIntegration(t *testing.T) {
 		Model:       "gpt-4",
 		Temperature: 0.1,
 	}
-	
+
 	mockResponse := `{
 		"command": "find . -name '*.go' -type f",
 		"safety_level": "safe",
 		"explanation": "Finds all Go source files in the current directory and subdirectories",
 		"reasoning": "This is a read-only operation that only searches for files without modifying anything"
 	}`
-	
+
 	provider := &MockProvider{response: mockResponse}
 	ui := ui.New()
 	mode := NewShellMode(cfg, provider, ui)
-	
+
 	suggestion, err := mode.SuggestCommand("find all go files")
-	
+
 	require.NoError(t, err)
 	assert.Equal(t, "find . -name '*.go' -type f", suggestion.Command)
 	assert.Equal(t, "safe", suggestion.SafetyLevel)
