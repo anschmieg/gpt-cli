@@ -12,6 +12,7 @@ import (
 	"github.com/anschmieg/gpt-cli/internal/ui"
 	"github.com/anschmieg/gpt-cli/internal/utils"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/mattn/go-isatty"
 	"github.com/spf13/cobra"
 )
 
@@ -147,13 +148,23 @@ func runCLI(cmd *cobra.Command, args []string) {
 
 func runNonInteractive(cfg *config.Config, prompt string, logger *utils.Logger) {
 	provider := providers.NewProvider(cfg.Provider, cfg)
+	runNonInteractiveWithProvider(cfg, prompt, logger, provider, stream)
+}
+
+// isTerminalFunc is a hookable function to detect terminals. Tests may override this.
+var isTerminalFunc = func(fd uintptr) bool { return isatty.IsTerminal(fd) }
+
+// runNonInteractiveWithProvider runs the non-interactive flow using an explicit provider.
+// This is exposed to make testing streaming vs non-streaming and TTY behavior easier.
+func runNonInteractiveWithProvider(cfg *config.Config, prompt string, logger *utils.Logger, provider providers.Provider, streamFlag bool) {
 	ui := ui.New()
 
 	logger.Debugf("Using provider: %s", cfg.Provider)
 	logger.Debugf("Using model: %s", cfg.Model)
 	logger.Debugf("Temperature: %.2f", cfg.Temperature)
 
-	if stream {
+	if streamFlag {
+		// Handle streaming with incremental markdown rendering
 		contentChan, errorChan := provider.StreamProvider(prompt)
 
 		var rawBuffer string
@@ -182,18 +193,20 @@ func runNonInteractive(cfg *config.Config, prompt string, logger *utils.Logger) 
 				}
 			}
 		}
-	} else {
-		response, err := provider.CallProvider(prompt)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
-		}
+	}
 
-		if cfg.Markdown {
-			fmt.Println(ui.RenderMarkdown(response))
-		} else {
-			fmt.Println(response)
-		}
+	// Non-streaming
+	response, err := provider.CallProvider(prompt)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Render markdown only when enabled and stdout is a terminal
+	if cfg.Markdown && isTerminalFunc(os.Stdout.Fd()) {
+		fmt.Println(ui.RenderMarkdown(response))
+	} else {
+		fmt.Println(response)
 	}
 }
 

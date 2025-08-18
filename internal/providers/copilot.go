@@ -37,7 +37,7 @@ func (p *CopilotProvider) CallProvider(prompt string) (string, error) {
 	}
 
 	url := strings.TrimSuffix(p.config.BaseURL, "/")
-	
+
 	// Handle different URL patterns for Copilot
 	if strings.HasSuffix(url, "/v1/chat/completions") {
 		// Already complete

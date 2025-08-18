@@ -4,26 +4,26 @@ import (
 	"fmt"
 	"strings"
 
-	tea "github.com/charmbracelet/bubbletea"
-	"github.com/charmbracelet/lipgloss"
 	"github.com/anschmieg/gpt-cli/internal/config"
 	"github.com/anschmieg/gpt-cli/internal/providers"
 	"github.com/anschmieg/gpt-cli/internal/ui"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 // Model represents the main application state
 type Model struct {
-	config     *config.Config
-	state      AppState
-	input      string
-	response   string
-	loading    bool
-	error      string
-	cursor     int
-	width      int
-	height     int
-	provider   providers.Provider
-	ui         *ui.UI
+	config   *config.Config
+	state    AppState
+	input    string
+	response string
+	loading  bool
+	error    string
+	cursor   int
+	width    int
+	height   int
+	provider providers.Provider
+	ui       *ui.UI
 }
 
 // AppState represents the current state of the application
@@ -40,7 +40,7 @@ const (
 func NewModel() *Model {
 	cfg := config.NewConfig()
 	provider := providers.NewProvider(cfg.Provider, cfg)
-	
+
 	return &Model{
 		config:   cfg,
 		state:    StateInput,
@@ -163,7 +163,7 @@ func (m *Model) View() string {
 // renderInputView renders the input view
 func (m *Model) renderInputView() string {
 	title := m.ui.TitleStyle.Render("GPT CLI")
-	
+
 	providerInfo := m.ui.SubtitleStyle.Render(fmt.Sprintf(
 		"Provider: %s | Model: %s | Temperature: %.1f",
 		m.config.Provider,
@@ -173,7 +173,7 @@ func (m *Model) renderInputView() string {
 
 	prompt := m.ui.PromptStyle.Render("Enter your prompt:")
 	input := m.ui.InputStyle.Render("> " + m.input + "█")
-	
+
 	help := m.ui.HelpStyle.Render("Press Enter to send • Ctrl+C or q to quit")
 
 	content := lipgloss.JoinVertical(
@@ -212,7 +212,7 @@ func (m *Model) renderLoadingView() string {
 // renderResponseView renders the response view
 func (m *Model) renderResponseView() string {
 	title := m.ui.TitleStyle.Render("GPT CLI - Response")
-	
+
 	// Render markdown if enabled
 	var response string
 	if m.config.Markdown {
@@ -220,7 +220,7 @@ func (m *Model) renderResponseView() string {
 	} else {
 		response = m.response
 	}
-	
+
 	responseBox := m.ui.ResponseStyle.Render(response)
 	help := m.ui.HelpStyle.Render("Press Esc for new prompt • Ctrl+C or q to quit")
 

@@ -49,7 +49,7 @@ func TestNewProvider(t *testing.T) {
 
 			provider := NewProvider(tt.providerName, cfg)
 			assert.NotNil(t, provider)
-			
+
 			// Check provider type by name
 			switch tt.providerName {
 			case "openai", "unknown":
@@ -84,7 +84,7 @@ func TestOpenAIProvider(t *testing.T) {
 	}
 
 	provider := NewOpenAIProvider(cfg)
-	
+
 	t.Run("GetName", func(t *testing.T) {
 		assert.Equal(t, "openai", provider.GetName())
 	})
@@ -93,7 +93,7 @@ func TestOpenAIProvider(t *testing.T) {
 		cfgNoKey := *cfg
 		cfgNoKey.APIKey = ""
 		providerNoKey := NewOpenAIProvider(&cfgNoKey)
-		
+
 		// This will fail due to missing API key, but we're testing the structure
 		_, err := providerNoKey.CallProvider("test prompt")
 		assert.Error(t, err)
@@ -101,11 +101,11 @@ func TestOpenAIProvider(t *testing.T) {
 
 	t.Run("StreamProvider", func(t *testing.T) {
 		contentChan, errorChan := provider.StreamProvider("test prompt")
-		
+
 		// Check that channels are created
 		assert.NotNil(t, contentChan)
 		assert.NotNil(t, errorChan)
-		
+
 		// Read from channels (will likely fail due to no real API, but tests structure)
 		select {
 		case content := <-contentChan:
@@ -127,7 +127,7 @@ func TestCopilotProvider(t *testing.T) {
 	}
 
 	provider := NewCopilotProvider(cfg)
-	
+
 	t.Run("GetName", func(t *testing.T) {
 		assert.Equal(t, "copilot", provider.GetName())
 	})
@@ -136,7 +136,7 @@ func TestCopilotProvider(t *testing.T) {
 		cfgNoURL := *cfg
 		cfgNoURL.BaseURL = ""
 		providerNoURL := NewCopilotProvider(&cfgNoURL)
-		
+
 		_, err := providerNoURL.CallProvider("test prompt")
 		assert.Error(t, err)
 		assert.Contains(t, err.Error(), "COPILOT_API_BASE not configured")
@@ -144,7 +144,7 @@ func TestCopilotProvider(t *testing.T) {
 
 	t.Run("StreamProvider", func(t *testing.T) {
 		contentChan, errorChan := provider.StreamProvider("test prompt")
-		
+
 		assert.NotNil(t, contentChan)
 		assert.NotNil(t, errorChan)
 	})
@@ -161,14 +161,14 @@ func TestGeminiProvider(t *testing.T) {
 	}
 
 	provider := NewGeminiProvider(cfg)
-	
+
 	t.Run("GetName", func(t *testing.T) {
 		assert.Equal(t, "gemini", provider.GetName())
 	})
 
 	t.Run("StreamProvider", func(t *testing.T) {
 		contentChan, errorChan := provider.StreamProvider("test prompt")
-		
+
 		assert.NotNil(t, contentChan)
 		assert.NotNil(t, errorChan)
 	})
@@ -191,16 +191,16 @@ func (m *MockProvider) CallProvider(prompt string) (string, error) {
 func (m *MockProvider) StreamProvider(prompt string) (<-chan string, <-chan error) {
 	contentChan := make(chan string, 1)
 	errorChan := make(chan error, 1)
-	
+
 	if m.err != nil {
 		errorChan <- m.err
 	} else {
 		contentChan <- m.response
 	}
-	
+
 	close(contentChan)
 	close(errorChan)
-	
+
 	return contentChan, errorChan
 }
 
@@ -215,29 +215,29 @@ func TestMockProvider(t *testing.T) {
 			response: "test response",
 			err:      nil,
 		}
-		
+
 		response, err := mock.CallProvider("test prompt")
 		assert.NoError(t, err)
 		assert.Equal(t, "test response", response)
-		
+
 		contentChan, errorChan := mock.StreamProvider("test prompt")
 		content := <-contentChan
 		err = <-errorChan
 		assert.Equal(t, "test response", content)
 		assert.NoError(t, err)
 	})
-	
+
 	t.Run("error response", func(t *testing.T) {
 		mock := &MockProvider{
 			name:     "mock",
 			response: "",
 			err:      assert.AnError,
 		}
-		
+
 		response, err := mock.CallProvider("test prompt")
 		assert.Error(t, err)
 		assert.Empty(t, response)
-		
+
 		contentChan, errorChan := mock.StreamProvider("test prompt")
 		content := <-contentChan
 		err = <-errorChan
@@ -258,12 +258,12 @@ func TestOpenAIIntegration(t *testing.T) {
 	if testing.Short() {
 		t.Skip("Skipping integration test in short mode")
 	}
-	
+
 	apiKey := os.Getenv("OPENAI_API_KEY")
 	if apiKey == "" {
 		t.Skip("Skipping OpenAI integration test: OPENAI_API_KEY not set")
 	}
-	
+
 	cfg := &config.Config{
 		Provider:    "openai",
 		Model:       "gpt-3.5-turbo",
@@ -272,9 +272,9 @@ func TestOpenAIIntegration(t *testing.T) {
 		APIKey:      apiKey,
 		BaseURL:     "https://api.openai.com",
 	}
-	
+
 	provider := NewOpenAIProvider(cfg)
-	
+
 	t.Run("CallProvider", func(t *testing.T) {
 		response, err := provider.CallProvider("Say hello")
 		assert.NoError(t, err)

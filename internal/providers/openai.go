@@ -33,7 +33,7 @@ func (p *OpenAIProvider) GetName() string {
 // CallProvider makes a request to OpenAI API
 func (p *OpenAIProvider) CallProvider(prompt string) (string, error) {
 	url := strings.TrimSuffix(p.config.BaseURL, "/") + "/v1/chat/completions"
-	
+
 	requestBody := map[string]interface{}{
 		"model": p.config.Model,
 		"messages": []map[string]string{

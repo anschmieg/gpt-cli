@@ -19,7 +19,7 @@ type UI struct {
 	LoadingStyle   lipgloss.Style
 	HelpStyle      lipgloss.Style
 	ContainerStyle lipgloss.Style
-	
+
 	// Markdown renderer
 	glamourRenderer *glamour.TermRenderer
 }
@@ -82,7 +82,7 @@ func New() *UI {
 
 		ContainerStyle: lipgloss.NewStyle().
 			Padding(2),
-			
+
 		glamourRenderer: renderer,
 	}
 }
@@ -93,13 +93,13 @@ func (ui *UI) RenderMarkdown(text string) string {
 		// Fallback to plain text if renderer failed to initialize
 		return text
 	}
-	
+
 	rendered, err := ui.glamourRenderer.Render(text)
 	if err != nil {
 		// Fallback to plain text on error
 		return text
 	}
-	
+
 	// Remove trailing newlines
 	return strings.TrimRight(rendered, "\n")
 }
@@ -108,26 +108,26 @@ func (ui *UI) RenderMarkdown(text string) string {
 func (ui *UI) IsMarkdown(text string) bool {
 	// Simple heuristics to detect markdown
 	markdownIndicators := []string{
-		"# ",    // Headers
-		"## ",   // Headers
-		"### ",  // Headers
-		"- ",    // Lists
-		"* ",    // Lists
-		"```",   // Code blocks
-		"`",     // Inline code
-		"**",    // Bold
-		"__",    // Bold
-		"*",     // Italic (but be careful of false positives)
-		"_",     // Italic (but be careful of false positives)
-		"[",     // Links
-		"![",    // Images
+		"# ",   // Headers
+		"## ",  // Headers
+		"### ", // Headers
+		"- ",   // Lists
+		"* ",   // Lists
+		"```",  // Code blocks
+		"`",    // Inline code
+		"**",   // Bold
+		"__",   // Bold
+		"*",    // Italic (but be careful of false positives)
+		"_",    // Italic (but be careful of false positives)
+		"[",    // Links
+		"![",   // Images
 	}
-	
+
 	for _, indicator := range markdownIndicators {
 		if strings.Contains(text, indicator) {
 			return true
 		}
 	}
-	
+
 	return false
 }
