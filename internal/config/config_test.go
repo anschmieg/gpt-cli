@@ -54,14 +54,14 @@ func TestNewConfig(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			// Clear environment
 			clearTestEnv()
-			
+
 			// Set test environment
 			for k, v := range tt.envVars {
 				os.Setenv(k, v)
 			}
-			
+
 			config := NewConfig()
-			
+
 			assert.Equal(t, tt.expected.Provider, config.Provider)
 			assert.Equal(t, tt.expected.Model, config.Model)
 			assert.Equal(t, tt.expected.Temperature, config.Temperature)
@@ -70,7 +70,7 @@ func TestNewConfig(t *testing.T) {
 			assert.Equal(t, tt.expected.System, config.System)
 			assert.Equal(t, tt.expected.APIKey, config.APIKey)
 			assert.Equal(t, tt.expected.BaseURL, config.BaseURL)
-			
+
 			// Cleanup
 			clearTestEnv()
 		})
@@ -172,13 +172,13 @@ providers:
 			// Create temporary file
 			tmpDir := t.TempDir()
 			configPath := filepath.Join(tmpDir, tt.filename)
-			
+
 			err := os.WriteFile(configPath, []byte(tt.content), 0644)
 			require.NoError(t, err)
-			
+
 			// Test loading
 			config, err := loadConfigFromPath(configPath)
-			
+
 			if tt.expectError {
 				assert.Error(t, err)
 				assert.Nil(t, config)
@@ -190,6 +190,28 @@ providers:
 	}
 }
 
+func TestLoadConfigFromPathEnvSubstitution(t *testing.T) {
+	os.Setenv("OPENAI_API_KEY", "env-key")
+	os.Setenv("OPENAI_API_BASE", "https://env-base")
+	defer os.Unsetenv("OPENAI_API_KEY")
+	defer os.Unsetenv("OPENAI_API_BASE")
+
+	tmpDir := t.TempDir()
+	configPath := filepath.Join(tmpDir, "config.yml")
+	content := `
+provider: openai
+providers:
+  openai:
+    api_key: ${OPENAI_API_KEY}
+    base_url: ${OPENAI_API_BASE}
+`
+	os.WriteFile(configPath, []byte(content), 0644)
+
+	cfg, err := loadConfigFromPath(configPath)
+	require.NoError(t, err)
+	assert.Equal(t, "env-key", cfg.Providers.OpenAI.APIKey)
+	assert.Equal(t, "https://env-base", cfg.Providers.OpenAI.BaseURL)
+}
 func TestGetEnvOrDefault(t *testing.T) {
 	tests := []struct {
 		name         string
@@ -220,7 +242,7 @@ func TestGetEnvOrDefault(t *testing.T) {
 				os.Setenv(tt.key, tt.envValue)
 				defer os.Unsetenv(tt.key)
 			}
-			
+
 			result := getEnvOrDefault(tt.key, tt.defaultValue)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -264,7 +286,7 @@ func TestGetEnvFloatOrDefault(t *testing.T) {
 				os.Setenv(tt.key, tt.envValue)
 				defer os.Unsetenv(tt.key)
 			}
-			
+
 			result := getEnvFloatOrDefault(tt.key, tt.defaultValue)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -315,7 +337,7 @@ func TestGetEnvBoolOrDefault(t *testing.T) {
 				os.Setenv(tt.key, tt.envValue)
 				defer os.Unsetenv(tt.key)
 			}
-			
+
 			result := getEnvBoolOrDefault(tt.key, tt.defaultValue)
 			assert.Equal(t, tt.expected, result)
 		})
@@ -354,30 +376,30 @@ func TestGetConfigDir(t *testing.T) {
 			// Save original values
 			origXDG := os.Getenv("XDG_CONFIG_HOME")
 			origHome := os.Getenv("HOME")
-			
+
 			// Set test values
 			if tt.xdgHome != "" {
 				os.Setenv("XDG_CONFIG_HOME", tt.xdgHome)
 			} else {
 				os.Unsetenv("XDG_CONFIG_HOME")
 			}
-			
+
 			if tt.home != "" {
 				os.Setenv("HOME", tt.home)
 			} else {
 				os.Unsetenv("HOME")
 			}
-			
+
 			result := getConfigDir()
 			assert.Equal(t, tt.expected, result)
-			
+
 			// Restore original values
 			if origXDG != "" {
 				os.Setenv("XDG_CONFIG_HOME", origXDG)
 			} else {
 				os.Unsetenv("XDG_CONFIG_HOME")
 			}
-			
+
 			if origHome != "" {
 				os.Setenv("HOME", origHome)
 			} else {
@@ -403,7 +425,7 @@ func clearTestEnv() {
 		"GEMINI_API_KEY",
 		"GEMINI_API_BASE",
 	}
-	
+
 	for _, envVar := range testEnvVars {
 		os.Unsetenv(envVar)
 	}

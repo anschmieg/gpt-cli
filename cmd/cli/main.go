@@ -5,13 +5,14 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/spf13/cobra"
-	tea "github.com/charmbracelet/bubbletea"
 	"github.com/anschmieg/gpt-cli/internal/config"
 	"github.com/anschmieg/gpt-cli/internal/modes"
 	"github.com/anschmieg/gpt-cli/internal/providers"
 	"github.com/anschmieg/gpt-cli/internal/ui"
 	"github.com/anschmieg/gpt-cli/internal/utils"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/mattn/go-isatty"
+	"github.com/spf13/cobra"
 )
 
 var (
@@ -108,7 +109,7 @@ func runCLI(cmd *cobra.Command, args []string) {
 	// If prompt provided as arguments, run in non-interactive mode
 	if len(args) > 0 {
 		prompt := joinArgs(args)
-		
+
 		// Handle different modes
 		if shellMode {
 			runShellMode(cfg, prompt, logger)
@@ -134,7 +135,7 @@ func runCLI(cmd *cobra.Command, args []string) {
 	// Print help and exit if no arguments provided and no mode specified
 	fmt.Println("No prompt provided. Use --help for usage information.")
 	fmt.Println("Available modes:")
-	fmt.Println("  gpt-cli \"your prompt\"        - Simple inline mode") 
+	fmt.Println("  gpt-cli \"your prompt\"        - Simple inline mode")
 	fmt.Println("  gpt-cli --shell \"your task\"  - Shell command suggestions")
 	fmt.Println("  gpt-cli --chat               - Interactive chat with memory")
 	fmt.Println("  go run main.go               - Original TUI mode")
@@ -143,16 +144,25 @@ func runCLI(cmd *cobra.Command, args []string) {
 
 func runNonInteractive(cfg *config.Config, prompt string, logger *utils.Logger) {
 	provider := providers.NewProvider(cfg.Provider, cfg)
+	runNonInteractiveWithProvider(cfg, prompt, logger, provider, stream)
+}
+
+// isTerminalFunc is a hookable function to detect terminals. Tests may override this.
+var isTerminalFunc = func(fd uintptr) bool { return isatty.IsTerminal(fd) }
+
+// runNonInteractiveWithProvider runs the non-interactive flow using an explicit provider.
+// This is exposed to make testing streaming vs non-streaming and TTY behavior easier.
+func runNonInteractiveWithProvider(cfg *config.Config, prompt string, logger *utils.Logger, provider providers.Provider, streamFlag bool) {
 	ui := ui.New()
 
 	logger.Debugf("Using provider: %s", cfg.Provider)
 	logger.Debugf("Using model: %s", cfg.Model)
 	logger.Debugf("Temperature: %.2f", cfg.Temperature)
 
-	if stream {
+	if streamFlag {
 		// Handle streaming
 		contentChan, errorChan := provider.StreamProvider(prompt)
-		
+
 		for {
 			select {
 			case chunk, ok := <-contentChan:
@@ -168,32 +178,33 @@ func runNonInteractive(cfg *config.Config, prompt string, logger *utils.Logger) 
 				}
 			}
 		}
-	} else {
-		// Handle non-streaming
-		response, err := provider.CallProvider(prompt)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: %v\n", err)
-			os.Exit(1)
-		}
+	}
 
-		if cfg.Markdown {
-			fmt.Println(ui.RenderMarkdown(response))
-		} else {
-			fmt.Println(response)
-		}
+	// Non-streaming
+	response, err := provider.CallProvider(prompt)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error: %v\n", err)
+		os.Exit(1)
+	}
+
+	// Render markdown only when enabled and stdout is a terminal
+	if cfg.Markdown && isTerminalFunc(os.Stdout.Fd()) {
+		fmt.Println(ui.RenderMarkdown(response))
+	} else {
+		fmt.Println(response)
 	}
 }
 
 func runShellMode(cfg *config.Config, prompt string, logger *utils.Logger) {
 	provider := providers.NewProvider(cfg.Provider, cfg)
 	ui := ui.New()
-	
+
 	logger.Debugf("Using provider: %s", cfg.Provider)
 	logger.Debugf("Using model: %s", cfg.Model)
 	logger.Debugf("Shell mode prompt: %s", prompt)
 
 	shellMode := modes.NewShellMode(cfg, provider, ui)
-	
+
 	err := shellMode.InteractiveMode(prompt)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error in shell mode: %v\n", err)
@@ -204,17 +215,17 @@ func runShellMode(cfg *config.Config, prompt string, logger *utils.Logger) {
 func runChatMode(cfg *config.Config, logger *utils.Logger) {
 	provider := providers.NewProvider(cfg.Provider, cfg)
 	ui := ui.New()
-	
+
 	logger.Debugf("Using provider: %s", cfg.Provider)
 	logger.Debugf("Using model: %s", cfg.Model)
 	logger.Debugf("Starting chat mode")
 
 	chatMode := modes.NewChatMode(cfg, provider, ui)
 	model := modes.NewChatModel(chatMode)
-	
+
 	// Create the BubbleTea program
 	p := tea.NewProgram(model, tea.WithAltScreen())
-	
+
 	if _, err := p.Run(); err != nil {
 		fmt.Fprintf(os.Stderr, "Error running chat mode: %v\n", err)
 		os.Exit(1)
