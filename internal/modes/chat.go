@@ -152,7 +152,7 @@ func (m *ChatModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // handleKeyMsg handles keyboard input in chat mode
 func (m *ChatModel) handleKeyMsg(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "ctrl+c", "q":
+	case "ctrl+c":
 		if m.state == ChatStateInput || m.state == ChatStateResponse || m.state == ChatStateError {
 			return m, tea.Quit
 		}
@@ -330,7 +330,7 @@ func (m *ChatModel) renderChatView() string {
 	}
 	
 	// Help text
-	help := m.chatMode.ui.HelpStyle.Render("Enter: Send • Ctrl+L: Clear • Ctrl+C/q: Quit • ↑↓: Scroll • Esc: Input mode")
+	help := m.chatMode.ui.HelpStyle.Render("Enter: Send • Ctrl+L: Clear • Ctrl+C: Quit • ↑↓: Scroll • Esc: Input mode")
 
 	content := lipgloss.JoinVertical(
 		lipgloss.Left,
@@ -431,7 +431,7 @@ func (m *ChatModel) renderLoadingView() string {
 func (m *ChatModel) renderErrorView() string {
 	title := m.chatMode.ui.TitleStyle.Render("💬 Chat Mode - Error")
 	error := m.chatMode.ui.ErrorStyle.Render("❌ " + m.error)
-	help := m.chatMode.ui.HelpStyle.Render("Press Esc to continue chatting • Ctrl+C/q to quit")
+	help := m.chatMode.ui.HelpStyle.Render("Press Esc to continue chatting • Ctrl+C to quit")
 
 	content := lipgloss.JoinVertical(
 		lipgloss.Left,

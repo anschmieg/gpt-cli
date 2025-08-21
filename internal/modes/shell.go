@@ -1,6 +1,7 @@
 package modes
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -108,11 +109,29 @@ func (s *ShellMode) parseShellSuggestion(response string) (*ShellSuggestion, err
 		cleaned = string(jsonMatch)
 	}
 
+	// Try direct unmarshal first
 	var suggestion ShellSuggestion
 	err := json.Unmarshal([]byte(cleaned), &suggestion)
-	if err != nil {
-		return nil, fmt.Errorf("invalid JSON response: %w\nResponse: %s", err, cleaned)
+	if err == nil {
+		// success
+	} else {
+		// Attempt basic repairs: convert single quotes to double quotes where safe
+		repaired := cleaned
+		// Replace single-quoted JSON keys/values with double quotes if pattern matches
+		singleQuoteRegex := regexp.MustCompile(`'([^']*)'`)
+		repaired = singleQuoteRegex.ReplaceAllString(repaired, `"$1"`)
+		// Remove common ANSI escape sequences
+		ansiRegex := regexp.MustCompile(`\x1b\[[0-9;]*m`)
+		repaired = ansiRegex.ReplaceAllString(repaired, "")
+		// Escape backslashes
+		repaired = strings.ReplaceAll(repaired, `\\`, `\\\\`)
+
+		err2 := json.Unmarshal([]byte(repaired), &suggestion)
+		if err2 != nil {
+			return nil, fmt.Errorf("invalid JSON response after repair: %v (original error: %v)\nResponse: %s\nRepaired: %s", err2, err, cleaned, repaired)
+		}
 	}
+
 
 	// Validate required fields
 	if suggestion.Command == "" {
@@ -201,14 +220,20 @@ func (s *ShellMode) promptUserAction(suggestion *ShellSuggestion) error {
 	fmt.Println("  [a] Abort")
 	fmt.Print("\nChoice [e/m/r/a]: ")
 
+	// Read full line input (handles pasted/multi-word input)
 	var choice string
-	fmt.Scanln(&choice)
-	choice = strings.ToLower(strings.TrimSpace(choice))
+	reader := bufio.NewReader(os.Stdin)
+	line, err := reader.ReadString('\n')
+	if err != nil {
+		return fmt.Errorf("failed to read user input: %w", err)
+	}
+	choice = strings.ToLower(strings.TrimSpace(line))
 
+	// Normalize full-word answers to single-letter commands
 	switch choice {
 	case "e", "execute":
 		return s.executeCommand(suggestion.Command)
-	case "m", "edit":
+	case "m", "edit", "manually", "manually edit":
 		return s.editAndExecute(suggestion.Command)
 	case "r", "refine":
 		return s.refineCommand(suggestion)
