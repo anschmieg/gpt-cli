@@ -1,7 +1,7 @@
 package providers
 
 import (
-	"bubbletea-app/internal/config"
+	"github.com/anschmieg/gpt-cli/internal/config"
 )
 
 // Provider interface defines the contract for AI providers

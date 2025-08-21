@@ -1,0 +1,54 @@
+# GPT-CLI Configuration
+# Place this file at ~/.config/gpt-cli/config.yml
+
+# Default provider to use (openai, copilot, gemini)
+provider: openai
+
+# Default model for the provider
+model: gpt-4o-mini
+
+# Temperature for responses (0.0 - 2.0)
+temperature: 0.7
+
+# Enable verbose logging
+verbose: false
+
+# Enable markdown rendering
+markdown: true
+
+# Default system prompt
+system: "You are a helpful AI assistant. Provide clear, concise, and accurate responses."
+
+# Provider-specific configurations
+providers:
+  openai:
+    api_key: "${OPENAI_API_KEY}"  # Use environment variable
+    base_url: "https://api.openai.com"
+  
+  copilot:
+    api_key: "${COPILOT_API_KEY}"
+    base_url: "${COPILOT_API_BASE}"
+  
+  gemini:
+    api_key: "${GEMINI_API_KEY}"
+    base_url: "https://generativelanguage.googleapis.com/v1beta/openai"
+
+# Examples of different configurations:
+
+# For development/testing with a local API:
+# provider: openai
+# providers:
+#   openai:
+#     api_key: "local-test-key"
+#     base_url: "http://localhost:8000"
+
+# For using OpenAI with specific settings:
+# provider: openai
+# model: gpt-4
+# temperature: 0.1
+# system: "You are a code review assistant. Provide constructive feedback."
+
+# For using different providers for different use cases:
+# provider: copilot  # Default for general use
+# model: gpt-4o-mini
+# temperature: 0.6

@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"strings"
 
-	"bubbletea-app/internal/config"
+	"github.com/anschmieg/gpt-cli/internal/config"
 )
 
 // CopilotProvider implements the Provider interface for GitHub Copilot

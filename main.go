@@ -6,7 +6,7 @@ import (
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"bubbletea-app/internal/app"
+	"github.com/anschmieg/gpt-cli/internal/app"
 )
 
 func main() {

@@ -1,9 +1,9 @@
 package ui
 
 import (
-	"regexp"
 	"strings"
 
+	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -19,10 +19,19 @@ type UI struct {
 	LoadingStyle   lipgloss.Style
 	HelpStyle      lipgloss.Style
 	ContainerStyle lipgloss.Style
+	
+	// Markdown renderer
+	glamourRenderer *glamour.TermRenderer
 }
 
 // New creates a new UI instance with default styles
 func New() *UI {
+	// Create glamour renderer for proper markdown rendering
+	renderer, _ := glamour.NewTermRenderer(
+		glamour.WithAutoStyle(),
+		glamour.WithWordWrap(80),
+	)
+
 	return &UI{
 		TitleStyle: lipgloss.NewStyle().
 			Bold(true).
@@ -73,131 +82,52 @@ func New() *UI {
 
 		ContainerStyle: lipgloss.NewStyle().
 			Padding(2),
+			
+		glamourRenderer: renderer,
 	}
 }
 
-// RenderMarkdown renders markdown text with basic formatting
+// RenderMarkdown renders markdown text using Glamour for proper formatting
 func (ui *UI) RenderMarkdown(text string) string {
-	if !hasMarkdown(text) {
+	if ui.glamourRenderer == nil {
+		// Fallback to plain text if renderer failed to initialize
 		return text
 	}
-
-	lines := strings.Split(text, "\n")
-	var result []string
-
-	inCodeBlock := false
-	for _, line := range lines {
-		// Handle code blocks
-		if strings.HasPrefix(strings.TrimSpace(line), "```") {
-			inCodeBlock = !inCodeBlock
-			if inCodeBlock {
-				result = append(result, ui.codeBlockStyle("--- code ---"))
-			} else {
-				result = append(result, ui.codeBlockStyle("--- end code ---"))
-			}
-			continue
-		}
-
-		if inCodeBlock {
-			result = append(result, ui.codeBlockStyle(line))
-			continue
-		}
-
-		// Handle headers
-		if match := regexp.MustCompile(`^(#{1,6})\s+(.*)$`).FindStringSubmatch(line); match != nil {
-			level := len(match[1])
-			text := match[2]
-			result = append(result, ui.headerStyle(text, level))
-			continue
-		}
-
-		// Handle lists
-		if match := regexp.MustCompile(`^\s*([-*+])\s+(.*)$`).FindStringSubmatch(line); match != nil {
-			text := match[2]
-			result = append(result, ui.listStyle(text))
-			continue
-		}
-
-		// Handle inline formatting
-		processed := line
-		processed = ui.processInlineCode(processed)
-		processed = ui.processBold(processed)
-		processed = ui.processItalic(processed)
-
-		result = append(result, processed)
+	
+	rendered, err := ui.glamourRenderer.Render(text)
+	if err != nil {
+		// Fallback to plain text on error
+		return text
 	}
-
-	return strings.Join(result, "\n")
+	
+	// Remove trailing newlines
+	return strings.TrimRight(rendered, "\n")
 }
 
-// hasMarkdown checks if text contains markdown formatting
-func hasMarkdown(text string) bool {
-	patterns := []string{
-		`^#{1,6}\s+`,     // Headers
-		`^\s*[-*+]\s+`,   // Lists
-		"```",            // Code blocks
-		"`[^`]+`",        // Inline code
-		`\*\*[^*]+\*\*`,  // Bold
-		`\*[^*]+\*`,      // Italic
+// IsMarkdown checks if text appears to contain markdown formatting
+func (ui *UI) IsMarkdown(text string) bool {
+	// Simple heuristics to detect markdown
+	markdownIndicators := []string{
+		"# ",    // Headers
+		"## ",   // Headers
+		"### ",  // Headers
+		"- ",    // Lists
+		"* ",    // Lists
+		"```",   // Code blocks
+		"`",     // Inline code
+		"**",    // Bold
+		"__",    // Bold
+		"*",     // Italic (but be careful of false positives)
+		"_",     // Italic (but be careful of false positives)
+		"[",     // Links
+		"![",    // Images
 	}
-
-	for _, pattern := range patterns {
-		if matched, _ := regexp.MatchString(pattern, text); matched {
+	
+	for _, indicator := range markdownIndicators {
+		if strings.Contains(text, indicator) {
 			return true
 		}
 	}
+	
 	return false
-}
-
-// Style helpers
-func (ui *UI) headerStyle(text string, level int) string {
-	style := lipgloss.NewStyle().Bold(true)
-	
-	if level <= 2 {
-		style = style.Foreground(lipgloss.Color("#0EA5E9")) // Cyan
-	} else {
-		style = style.Foreground(lipgloss.Color("#EAB308")) // Yellow
-	}
-	
-	return style.Render(text)
-}
-
-func (ui *UI) listStyle(text string) string {
-	return "  • " + text
-}
-
-func (ui *UI) codeBlockStyle(text string) string {
-	return lipgloss.NewStyle().
-		Foreground(lipgloss.Color("#6B7280")).
-		Render(text)
-}
-
-func (ui *UI) processInlineCode(text string) string {
-	re := regexp.MustCompile("`([^`]+)`")
-	return re.ReplaceAllStringFunc(text, func(match string) string {
-		code := strings.Trim(match, "`")
-		return lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#059669")).
-			Render(code)
-	})
-}
-
-func (ui *UI) processBold(text string) string {
-	re := regexp.MustCompile(`\*\*([^*]+)\*\*`)
-	return re.ReplaceAllStringFunc(text, func(match string) string {
-		content := strings.Trim(match, "*")
-		return lipgloss.NewStyle().
-			Bold(true).
-			Render(content)
-	})
-}
-
-func (ui *UI) processItalic(text string) string {
-	re := regexp.MustCompile(`\*([^*]+)\*`)
-	return re.ReplaceAllStringFunc(text, func(match string) string {
-		content := strings.Trim(match, "*")
-		return lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#EAB308")).
-			Render(content)
-	})
 }
